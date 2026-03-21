@@ -24,15 +24,12 @@ export default function Login({ onLogin }) {
         setError('Please enter your name')
         return
       }
-      
-      // Loosened Password Validation
       if (formData.password.length < 4) {
         setError('Password must be at least 4 characters long.')
         return
       }
     }
 
-    // Secure Password Hashing (SHA-256)
     const encoder = new TextEncoder();
     const data = encoder.encode(formData.password);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -65,23 +62,23 @@ export default function Login({ onLogin }) {
 
   return (
     <div className="flex items-center justify-center min-h-[80vh]">
-      <div className="glass-card w-full max-w-md p-8 sm:p-10 text-center animate-fade-in">
+      <div className="glass-card w-full max-w-md p-8 sm:p-10 text-center animate-fade-in transition-all">
         
         <div className="flex justify-center mb-6">
-          <div className="bg-gradient-to-tr from-blue-500 to-indigo-500 p-4 rounded-full shadow-[0_0_30px_rgba(59,130,246,0.5)]">
+          <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-4 rounded-full shadow-[0_0_30px_rgba(59,130,246,0.3)] dark:shadow-[0_0_30px_rgba(59,130,246,0.5)]">
             <Sun className="w-10 h-10 text-white" />
           </div>
         </div>
         
-        <h2 className="text-3xl font-bold text-white mb-2">
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2 transition-colors">
           {isLogin ? 'Welcome Back' : 'Create Account'}
         </h2>
-        <p className="text-slate-400 mb-8">
+        <p className="text-slate-500 dark:text-slate-400 mb-8 transition-colors">
           {isLogin ? 'Log in to track your daily routine' : 'Start tracking your habits today'}
         </p>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm text-left">
+          <div className="bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/50 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl mb-6 text-sm text-left transition-colors">
             {error}
           </div>
         )}
@@ -89,7 +86,7 @@ export default function Login({ onLogin }) {
         <form onSubmit={handleSubmit} className="flex flex-col gap-5 text-left">
           {!isLogin && (
             <div>
-              <label className="block mb-2 text-sm font-medium text-slate-400">Full Name</label>
+              <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-400 transition-colors">Full Name</label>
               <input 
                 className="input-field"
                 type="text" 
@@ -102,7 +99,7 @@ export default function Login({ onLogin }) {
           )}
           
           <div>
-            <label className="block mb-2 text-sm font-medium text-slate-400">Email Address</label>
+            <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-400 transition-colors">Email Address</label>
             <input 
               className="input-field"
               type="email" 
@@ -114,7 +111,7 @@ export default function Login({ onLogin }) {
           </div>
           
           <div>
-            <label className="block mb-2 text-sm font-medium text-slate-400">Password</label>
+            <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-400 transition-colors">Password</label>
             <input 
               className="input-field"
               type="password" 
@@ -131,7 +128,7 @@ export default function Login({ onLogin }) {
         </form>
 
         <div className="mt-8 text-sm">
-          <span className="text-slate-400">
+          <span className="text-slate-600 dark:text-slate-400 transition-colors">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
           </span>
           <button 
@@ -141,7 +138,7 @@ export default function Login({ onLogin }) {
               setError('')
               setFormData({ name: '', email: '', password: '' })
             }}
-            className="text-blue-400 font-semibold hover:text-blue-300 hover:underline transition-colors"
+            className="text-blue-600 dark:text-blue-400 font-semibold hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition-colors"
           >
             {isLogin ? 'Sign up' : 'Log in'}
           </button>

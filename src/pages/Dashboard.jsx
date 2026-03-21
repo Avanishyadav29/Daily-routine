@@ -50,22 +50,22 @@ export default function Dashboard({ user }) {
   return (
     <div className="max-w-3xl mx-auto animate-fade-in pb-10">
       
-      <div className="glass-card p-6 sm:p-8 mb-8 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:opacity-20 transition-opacity">
-          <Clock className="w-40 h-40 transform rotate-12" />
+      <div className="glass-card p-6 sm:p-8 mb-8 relative overflow-hidden group transition-all">
+        <div className="absolute top-0 right-0 p-10 opacity-[0.05] dark:opacity-10 group-hover:opacity-20 transition-opacity">
+          <Clock className="w-40 h-40 transform rotate-12 text-slate-800 dark:text-white" />
         </div>
         
-        <h1 className="text-3xl font-bold text-white mb-2 relative z-10">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2 relative z-10 transition-colors">
           Hello, {user.name.split(' ')[0]} 👋
         </h1>
-        <p className="text-slate-400 mb-8 relative z-10 text-lg">Here is your daily routine progress.</p>
+        <p className="text-slate-600 dark:text-slate-400 mb-8 relative z-10 text-lg transition-colors">Here is your daily routine progress.</p>
         
-        <div className="bg-slate-900/50 rounded-2xl p-5 border border-slate-700/50 relative z-10">
+        <div className="bg-white/80 dark:bg-slate-900/50 rounded-2xl p-5 border border-slate-200 dark:border-slate-700/50 relative z-10 transition-colors">
           <div className="flex justify-between items-end mb-3">
-            <span className="font-semibold text-slate-200">Daily Progress</span>
-            <span className="text-2xl font-bold text-blue-400">{progress}%</span>
+            <span className="font-semibold text-slate-800 dark:text-slate-200 transition-colors">Daily Progress</span>
+            <span className="text-2xl font-bold text-blue-600 dark:text-blue-400 transition-colors">{progress}%</span>
           </div>
-          <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden shadow-inner">
+          <div className="w-full h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner transition-colors">
             <div 
               className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full transition-all duration-700 ease-out"
               style={{ width: `${progress}%` }} 
@@ -75,7 +75,7 @@ export default function Dashboard({ user }) {
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h2 className="text-2xl font-bold text-white">Your Tasks</h2>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white transition-colors">Your Tasks</h2>
         <button 
           className="btn-primary w-full sm:w-auto shadow-lg shadow-blue-500/20" 
           onClick={() => setIsAdding(!isAdding)}>
@@ -86,7 +86,7 @@ export default function Dashboard({ user }) {
       {isAdding && (
         <form onSubmit={handleAdd} className="glass-card p-6 mb-8 flex flex-col sm:flex-row gap-4 items-end animate-fade-in">
           <div className="w-full sm:flex-1">
-            <label className="block mb-2 text-sm font-medium text-slate-400">Task Name</label>
+            <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-400 transition-colors">Task Name</label>
             <input 
               className="input-field"
               type="text" 
@@ -97,7 +97,7 @@ export default function Dashboard({ user }) {
             />
           </div>
           <div className="w-full sm:w-40">
-            <label className="block mb-2 text-sm font-medium text-slate-400">Time</label>
+            <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-400 transition-colors">Time</label>
             <input 
               className="input-field"
               type="time" 
@@ -109,7 +109,7 @@ export default function Dashboard({ user }) {
             <button 
               type="button" 
               onClick={() => setIsAdding(false)} 
-              className="flex-1 sm:flex-none px-6 py-3 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700 transition-colors font-medium border border-slate-700/50"
+              className="flex-1 sm:flex-none px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium border border-slate-300 dark:border-slate-700/50"
             >
               Cancel
             </button>
@@ -120,9 +120,9 @@ export default function Dashboard({ user }) {
 
       <div className="flex flex-col gap-4">
         {routines.length === 0 ? (
-          <div className="text-center p-12 bg-white/5 backdrop-blur-md rounded-2xl border border-dashed border-slate-600/50 text-slate-400">
+          <div className="text-center p-12 bg-white/50 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-dashed border-slate-400 dark:border-slate-600/50 text-slate-500 dark:text-slate-400 transition-colors">
             <Clock className="w-16 h-16 mx-auto opacity-40 mb-4" />
-            <h3 className="text-xl font-bold text-slate-300 mb-2">No routines added yet</h3>
+            <h3 className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2 transition-colors">No routines added yet</h3>
             <p>Start tracking your day by adding your first daily routine.</p>
           </div>
         ) : (
@@ -130,23 +130,27 @@ export default function Dashboard({ user }) {
             <div 
               key={item.id} 
               className={`glass-card p-5 flex items-center justify-between transition-all duration-300 ${
-                item.isCompleted ? 'opacity-60 scale-[0.99] border-green-500/20 bg-green-900/10' : 'hover:-translate-y-1 hover:shadow-blue-900/10'
+                item.isCompleted 
+                ? 'opacity-60 scale-[0.99] border-green-500/20 bg-green-100/50 dark:bg-green-900/10' 
+                : 'hover:-translate-y-1 hover:shadow-lg dark:hover:shadow-blue-900/10'
               }`}
             >
               <div 
                 className="flex items-center gap-4 flex-1 cursor-pointer group" 
                 onClick={() => toggleComplete(item.id)}
               >
-                <div className={`transition-colors ${item.isCompleted ? 'text-green-500' : 'text-slate-500 group-hover:text-blue-400'}`}>
+                <div className={`transition-colors ${item.isCompleted ? 'text-green-600 dark:text-green-500' : 'text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400'}`}>
                   {item.isCompleted ? <CheckCircle2 className="w-8 h-8" /> : <Circle className="w-8 h-8" />}
                 </div>
                 <div>
                   <h3 className={`text-lg font-semibold mb-1 transition-all ${
-                    item.isCompleted ? 'line-through text-slate-500' : 'text-slate-100 group-hover:text-blue-300'
+                    item.isCompleted 
+                    ? 'line-through text-slate-500 dark:text-slate-500' 
+                    : 'text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-300'
                   }`}>
                     {item.title}
                   </h3>
-                  <div className="flex items-center gap-1.5 text-sm text-slate-500">
+                  <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-500 transition-colors">
                     <Clock className="w-4 h-4" />
                     <span>{item.time}</span>
                   </div>
@@ -154,7 +158,7 @@ export default function Dashboard({ user }) {
               </div>
               <button 
                 onClick={() => deleteRoutine(item.id)}
-                className="p-2.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-full transition-all"
+                className="p-2.5 text-slate-500 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-400/10 rounded-full transition-all"
                 title="Delete"
               >
                 <Trash2 className="w-5 h-5" />
