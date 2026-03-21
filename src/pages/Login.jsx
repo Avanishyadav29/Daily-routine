@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Sun, ArrowRight, UserPlus, LogIn } from 'lucide-react'
+import { Sun, LogIn, UserPlus } from 'lucide-react'
 
 export default function Login({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true)
@@ -14,7 +14,6 @@ export default function Login({ onLogin }) {
     e.preventDefault()
     setError('')
 
-    // Basic Validation
     if (!formData.email || !formData.password) {
       setError('Please fill in all fields')
       return
@@ -26,10 +25,9 @@ export default function Login({ onLogin }) {
         return
       }
       
-      // Password Strength Validation for New Users
-      const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-      if (!strongPasswordRegex.test(formData.password)) {
-        setError('Password must be 8+ chars and include an uppercase letter, a lowercase letter, a number, and a special character (@$!%*?&).')
+      // Loosened Password Validation
+      if (formData.password.length < 4) {
+        setError('Password must be at least 4 characters long.')
         return
       }
     }
@@ -41,7 +39,6 @@ export default function Login({ onLogin }) {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashedPassword = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 
-    // Mock Authentication Logic using LocalStorage
     const users = JSON.parse(localStorage.getItem('routine_users')) || {}
 
     if (isLogin) {
@@ -50,7 +47,6 @@ export default function Login({ onLogin }) {
         setError('Your account has been blocked by the admin.')
         return
       }
-      // Added fallback to plaintext to support older test accounts like admin@admin.com until reset
       if (user && (user.password === hashedPassword || user.password === formData.password)) {
         onLogin({ email: formData.email, name: user.name })
       } else {
@@ -68,55 +64,34 @@ export default function Login({ onLogin }) {
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '80vh'
-    }}>
-      <div className="glass-card fade-in-up" style={{
-        width: '100%',
-        maxWidth: '420px',
-        padding: '3rem 2.5rem',
-        textAlign: 'center'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-          <div style={{
-            background: 'var(--accent-color)',
-            padding: '1rem',
-            borderRadius: '50%',
-            boxShadow: '0 0 20px rgba(88, 166, 255, 0.4)'
-          }}>
-            <Sun size={40} color="#fff" />
+    <div className="flex items-center justify-center min-h-[80vh]">
+      <div className="glass-card w-full max-w-md p-8 sm:p-10 text-center animate-fade-in">
+        
+        <div className="flex justify-center mb-6">
+          <div className="bg-gradient-to-tr from-blue-500 to-indigo-500 p-4 rounded-full shadow-[0_0_30px_rgba(59,130,246,0.5)]">
+            <Sun className="w-10 h-10 text-white" />
           </div>
         </div>
         
-        <h2 style={{ fontSize: '1.8rem', color: '#fff', marginBottom: '0.5rem' }}>
+        <h2 className="text-3xl font-bold text-white mb-2">
           {isLogin ? 'Welcome Back' : 'Create Account'}
         </h2>
-        <p style={{ marginBottom: '2rem' }}>
+        <p className="text-slate-400 mb-8">
           {isLogin ? 'Log in to track your daily routine' : 'Start tracking your habits today'}
         </p>
 
         {error && (
-          <div style={{
-            backgroundColor: 'rgba(218, 54, 51, 0.1)',
-            color: 'var(--danger-color)',
-            padding: '0.75rem',
-            borderRadius: '8px',
-            marginBottom: '1.5rem',
-            border: '1px solid var(--danger-color)',
-            fontSize: '0.9rem'
-          }}>
+          <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm text-left">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'left' }}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5 text-left">
           {!isLogin && (
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Full Name</label>
+              <label className="block mb-2 text-sm font-medium text-slate-400">Full Name</label>
               <input 
+                className="input-field"
                 type="text" 
                 name="name" 
                 placeholder="John Doe" 
@@ -127,8 +102,9 @@ export default function Login({ onLogin }) {
           )}
           
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Email Address</label>
+            <label className="block mb-2 text-sm font-medium text-slate-400">Email Address</label>
             <input 
+              className="input-field"
               type="email" 
               name="email" 
               placeholder="you@example.com" 
@@ -138,8 +114,9 @@ export default function Login({ onLogin }) {
           </div>
           
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Password</label>
+            <label className="block mb-2 text-sm font-medium text-slate-400">Password</label>
             <input 
+              className="input-field"
               type="password" 
               name="password" 
               placeholder="••••••••" 
@@ -148,13 +125,13 @@ export default function Login({ onLogin }) {
             />
           </div>
 
-          <button type="submit" className="btn-primary" style={{ marginTop: '0.5rem', fontSize: '1.1rem', padding: '0.8rem' }}>
-            {isLogin ? <><LogIn size={20}/> Sign In</> : <><UserPlus size={20}/> Sign Up</>}
+          <button type="submit" className="btn-primary mt-2">
+            {isLogin ? <><LogIn className="w-5 h-5"/> Sign In</> : <><UserPlus className="w-5 h-5"/> Sign Up</>}
           </button>
         </form>
 
-        <div style={{ marginTop: '2rem', fontSize: '0.95rem' }}>
-          <span style={{ color: 'var(--text-secondary)' }}>
+        <div className="mt-8 text-sm">
+          <span className="text-slate-400">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
           </span>
           <button 
@@ -164,13 +141,7 @@ export default function Login({ onLogin }) {
               setError('')
               setFormData({ name: '', email: '', password: '' })
             }}
-            style={{ 
-              background: 'none', 
-              color: 'var(--accent-color)', 
-              fontWeight: 600,
-              textDecoration: 'underline',
-              padding: 0
-            }}
+            className="text-blue-400 font-semibold hover:text-blue-300 hover:underline transition-colors"
           >
             {isLogin ? 'Sign up' : 'Log in'}
           </button>

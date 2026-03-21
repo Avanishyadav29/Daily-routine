@@ -1,225 +1,26 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
 
-:root {
-  --bg-color: #0d1117;
-  --bg-secondary: #161b22;
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-  --accent-color: #58a6ff;
-  --accent-hover: #3182ce;
-  --success-color: #2ea043;
-  --danger-color: #da3633;
-  --border-color: #30363d;
-  --glass-bg: rgba(22, 27, 34, 0.6);
-  --glass-border: rgba(48, 54, 61, 0.4);
-  --card-shadow: 0 8px 24px rgba(0,0,0,0.2);
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: 'Outfit', sans-serif;
-}
-
-body {
-  background-color: var(--bg-color);
-  color: var(--text-primary);
-  min-height: 100vh;
-  background-image: radial-gradient(circle at 50% 0%, #1f2937 0%, #0d1117 70%);
-  background-attachment: fixed;
-}
-
-/* Glassmorphism Card */
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  box-shadow: var(--card-shadow);
-}
-
-/* Base Styles */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-}
-
-p {
-  color: var(--text-secondary);
-}
-
-a {
-  color: var(--accent-color);
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-a:hover {
-  color: var(--accent-hover);
-}
-
-/* Form Elements */
-input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background-color: var(--bg-color);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-size: 1rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-input:focus {
-  outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
-}
-
-button {
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 1rem;
-  font-weight: 500;
-  border: none;
-}
-
-.btn-primary {
-  background-color: var(--accent-color);
-  color: #fff;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  transition: background-color 0.2s, transform 0.1s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.btn-primary:hover {
-  background-color: var(--accent-hover);
-}
-
-.btn-primary:active {
-  transform: scale(0.98);
-}
-
-.btn-icon {
-  background: transparent;
-  color: var(--text-secondary);
-  padding: 0.5rem;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.btn-icon:hover {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
-/* Layout Classes */
-.container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-
-@media (max-width: 768px) {
-  .container {
-    padding: 1rem;
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-200 min-h-screen font-sans;
+    background-image: radial-gradient(circle at 40% 10%, #1e1b4b 0%, #020617 70%);
+    background-attachment: fixed;
   }
 }
 
-/* Utilities */
-.text-center { text-align: center; }
-.mt-4 { margin-top: 1rem; }
-.mb-4 { margin-bottom: 1rem; }
-.flex { display: flex; }
-.items-center { align-items: center; }
-.justify-between { justify-content: space-between; }
-.gap-2 { gap: 0.5rem; }
-.gap-4 { gap: 1rem; }
-.md-gap-4 { gap: 1rem; }
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .hide-mobile {
-    display: none !important;
-  }
-  .md-gap-4 {
-    gap: 0.5rem;
-  }
+@layer components {
   .glass-card {
-    padding: 1.25rem !important;
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl;
   }
-  .container {
-    padding: 1rem !important;
+  
+  .input-field {
+    @apply w-full px-4 py-3 bg-slate-900/50 border border-slate-700/50 rounded-xl text-slate-100 
+    focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all
+    placeholder:text-slate-500;
   }
-  h1 { font-size: 1.5rem !important; }
-}
-
-/* Checkbox Animation */
-.checkbox-wrapper {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.checkbox-wrapper input[type="checkbox"] {
-  display: none;
-}
-
-.custom-checkbox {
-  width: 24px;
-  height: 24px;
-  border: 2px solid var(--border-color);
-  border-radius: 6px;
-  margin-right: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.checkbox-wrapper input[type="checkbox"]:checked + .custom-checkbox {
-  background-color: var(--success-color);
-  border-color: var(--success-color);
-}
-
-.custom-checkbox::after {
-  content: '';
-  position: absolute;
-  width: 6px;
-  height: 12px;
-  border-bottom: 2px solid white;
-  border-right: 2px solid white;
-  transform: rotate(45deg);
-  opacity: 0;
-  transition: all 0.2s ease;
-}
-
-.checkbox-wrapper input[type="checkbox"]:checked + .custom-checkbox::after {
-  opacity: 1;
-}
-
-/* Animation for items */
-.fade-in-up {
-  animation: fadeInUp 0.4s ease forwards;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium px-6 py-3 rounded-xl
+    hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2;
   }
 }

@@ -9,7 +9,6 @@ export default function Admin({ user }) {
   useEffect(() => {
     if (user?.email !== 'admin@admin.com') return;
 
-    // Load all users from local storage
     const usersData = JSON.parse(localStorage.getItem('routine_users')) || {}
     const usersList = Object.keys(usersData).map(email => ({
       email,
@@ -18,7 +17,6 @@ export default function Admin({ user }) {
       isBlocked: usersData[email].isBlocked || false
     }))
 
-    // Calculate routines for each user and overarching stats
     let totalRoutines = 0
     const usersWithStats = usersList.map(u => {
       const userRoutines = JSON.parse(localStorage.getItem(`routines_${u.email}`)) || []
@@ -31,7 +29,6 @@ export default function Admin({ user }) {
     setStats({ totalUsers: usersList.length, totalRoutines })
   }, [user])
 
-  // Allow only admin email to access
   if (user?.email !== 'admin@admin.com') {
     return <Navigate to="/" />
   }
@@ -51,115 +48,127 @@ export default function Admin({ user }) {
 
   const deleteUser = (email) => {
     if(window.confirm(`Are you sure you want to delete ${email}?`)) {
-      // Remove from users list
       const usersData = JSON.parse(localStorage.getItem('routine_users')) || {}
       delete usersData[email]
       localStorage.setItem('routine_users', JSON.stringify(usersData))
       
-      // Remove routines data
       localStorage.removeItem(`routines_${email}`)
 
-      // Update state
       setAllUsers(allUsers.filter(u => u.email !== email))
       setStats(prev => ({ ...prev, totalUsers: prev.totalUsers - 1 }))
     }
   }
 
   return (
-    <div className="fade-in-up" style={{ maxWidth: '1000px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-        <Shield size={32} color="var(--accent-color)" />
-        <h1 style={{ fontSize: '2rem', margin: 0 }}>Admin Dashboard</h1>
+    <div className="max-w-5xl mx-auto animate-fade-in pb-10">
+      <div className="flex items-center gap-4 mb-8">
+        <div className="p-3 bg-blue-500/20 text-blue-400 rounded-2xl shadow-[0_0_20px_rgba(59,130,246,0.2)]">
+          <Shield className="w-8 h-8" />
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Admin Dashboard</h1>
       </div>
 
-      {/* Stats Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <div style={{ background: 'rgba(88, 166, 255, 0.1)', padding: '1rem', borderRadius: '12px' }}>
-            <Users size={32} color="var(--accent-color)" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-10">
+        <div className="glass-card p-6 flex items-center gap-6 relative overflow-hidden group hover:-translate-y-1 transition-transform">
+          <div className="absolute -right-6 -top-6 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all"></div>
+          <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl relative z-10">
+            <Users className="w-10 h-10 text-blue-400" />
           </div>
-          <div>
-            <h3 style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>Total Users</h3>
-            <p style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--text-primary)' }}>{stats.totalUsers}</p>
+          <div className="relative z-10">
+            <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-1">Total Users</h3>
+            <p className="text-4xl font-black text-white">{stats.totalUsers}</p>
           </div>
         </div>
         
-        <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <div style={{ background: 'rgba(46, 160, 67, 0.1)', padding: '1rem', borderRadius: '12px' }}>
-            <Activity size={32} color="var(--success-color)" />
+        <div className="glass-card p-6 flex items-center gap-6 relative overflow-hidden group hover:-translate-y-1 transition-transform">
+          <div className="absolute -right-6 -top-6 w-32 h-32 bg-green-500/10 rounded-full blur-2xl group-hover:bg-green-500/20 transition-all"></div>
+          <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl relative z-10">
+            <Activity className="w-10 h-10 text-green-400" />
           </div>
-          <div>
-            <h3 style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>Total Routines</h3>
-            <p style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--text-primary)' }}>{stats.totalRoutines}</p>
+          <div className="relative z-10">
+            <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-1">Total Routines</h3>
+            <p className="text-4xl font-black text-white">{stats.totalRoutines}</p>
           </div>
         </div>
       </div>
 
-      {/* Users Table */}
-      <div className="glass-card" style={{ padding: '2rem', overflowX: 'auto' }}>
-        <h2 style={{ marginBottom: '1.5rem', fontSize: '1.5rem' }}>Registered Users</h2>
+      <div className="glass-card p-0 overflow-hidden border border-slate-700/50">
+        <div className="p-6 border-b border-slate-700/50 bg-slate-900/30">
+          <h2 className="text-xl font-bold text-white">Registered Users</h2>
+        </div>
         
-        {allUsers.length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>No users found.</p>
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
-                <th style={{ padding: '1rem 0.5rem' }}>Name</th>
-                <th style={{ padding: '1rem 0.5rem' }}>Email</th>
-                <th style={{ padding: '1rem 0.5rem' }}>Status</th>
-                <th style={{ padding: '1rem 0.5rem' }}>Total Tasks</th>
-                <th style={{ padding: '1rem 0.5rem' }}>Completed</th>
-                <th style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allUsers.map((u) => (
-                <tr key={u.email} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>{u.name} {u.email==='admin@admin.com' && '(Admin)'}</td>
-                  <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>{u.email}</td>
-                  <td style={{ padding: '1rem 0.5rem' }}>
-                    {u.isBlocked ? (
-                      <span style={{ background: 'rgba(218, 54, 51, 0.1)', color: 'var(--danger-color)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600 }}>Blocked</span>
-                    ) : (
-                      <span style={{ background: 'rgba(46, 160, 67, 0.1)', color: 'var(--success-color)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600 }}>Active</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '1rem 0.5rem' }}>
-                    <span style={{ background: 'var(--bg-secondary)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.9rem' }}>
-                      {u.routinesCount}
-                    </span>
-                  </td>
-                  <td style={{ padding: '1rem 0.5rem', color: 'var(--success-color)' }}>
-                    {u.completedCount}
-                  </td>
-                  <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>
-                    {u.email !== 'admin@admin.com' && (
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        <button 
-                          onClick={() => toggleBlockUser(u.email)}
-                          className="btn-icon" 
-                          style={{ color: u.isBlocked ? 'var(--text-secondary)' : '#ffa500' }}
-                          title={u.isBlocked ? "Unblock User" : "Block User"}
-                        >
-                          {u.isBlocked ? <CheckCircle size={18} /> : <Ban size={18} />}
-                        </button>
-                        <button 
-                          onClick={() => deleteUser(u.email)}
-                          className="btn-icon" 
-                          style={{ color: 'var(--danger-color)' }}
-                          title="Delete User"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    )}
-                  </td>
+        <div className="overflow-x-auto">
+          {allUsers.length === 0 ? (
+            <p className="text-slate-400 text-center p-12">No users found.</p>
+          ) : (
+            <table className="w-full text-left border-collapse whitespace-nowrap">
+              <thead>
+                <tr className="bg-slate-900/50 text-slate-400 text-sm uppercase tracking-wider">
+                  <th className="px-6 py-4 font-semibold">Name</th>
+                  <th className="px-6 py-4 font-semibold">Email</th>
+                  <th className="px-6 py-4 font-semibold">Status</th>
+                  <th className="px-6 py-4 font-semibold text-center">Tasks</th>
+                  <th className="px-6 py-4 font-semibold text-center">Completed</th>
+                  <th className="px-6 py-4 font-semibold text-right">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody className="divide-y divide-slate-700/50">
+                {allUsers.map((u) => (
+                  <tr key={u.email} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-6 py-4 font-medium text-slate-200">
+                      {u.name} {u.email==='admin@admin.com' && <span className="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-md border border-blue-500/20">Admin</span>}
+                    </td>
+                    <td className="px-6 py-4 text-slate-400">{u.email}</td>
+                    <td className="px-6 py-4">
+                      {u.isBlocked ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span> Blocked
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span> Active
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="bg-slate-800 text-slate-300 px-3 py-1 rounded-full text-sm font-medium border border-slate-700">
+                        {u.routinesCount}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="text-green-400 font-bold">{u.completedCount}</span>
+                      <span className="text-slate-500 text-sm ml-1">/{u.routinesCount}</span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {u.email !== 'admin@admin.com' && (
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => toggleBlockUser(u.email)}
+                            className={`p-2 rounded-xl transition-all ${
+                              u.isBlocked 
+                                ? 'text-green-400 hover:bg-green-400/10 hover:text-green-300' 
+                                : 'text-orange-400 hover:bg-orange-400/10 hover:text-orange-300'
+                            }`}
+                            title={u.isBlocked ? "Unblock User" : "Block User"}
+                          >
+                            {u.isBlocked ? <CheckCircle className="w-5 h-5" /> : <Ban className="w-5 h-5" />}
+                          </button>
+                          <button 
+                            onClick={() => deleteUser(u.email)}
+                            className="p-2 text-red-500 hover:bg-red-500/10 hover:text-red-400 rounded-xl transition-all"
+                            title="Delete User"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     </div>
   )
