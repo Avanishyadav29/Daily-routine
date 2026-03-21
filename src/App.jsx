@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import Admin from './pages/Admin'
 import Navbar from './components/Navbar'
 
 function App() {
@@ -40,6 +41,10 @@ function App() {
           <Route 
             path="/" 
             element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/admin" 
+            element={user ? <Admin user={user} /> : <Navigate to="/login" />} 
           />
         </Routes>
       </div>
