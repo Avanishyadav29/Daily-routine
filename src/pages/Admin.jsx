@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Users, Trash2, Shield, Activity } from 'lucide-react'
+import { Users, Trash2, Shield, Activity, Ban, CheckCircle } from 'lucide-react'
 import { Navigate } from 'react-router-dom'
 
 export default function Admin({ user }) {
@@ -14,7 +14,8 @@ export default function Admin({ user }) {
     const usersList = Object.keys(usersData).map(email => ({
       email,
       name: usersData[email].name,
-      password: usersData[email].password
+      password: usersData[email].password,
+      isBlocked: usersData[email].isBlocked || false
     }))
 
     // Calculate routines for each user and overarching stats
@@ -33,6 +34,19 @@ export default function Admin({ user }) {
   // Allow only admin email to access
   if (user?.email !== 'admin@admin.com') {
     return <Navigate to="/" />
+  }
+
+  const toggleBlockUser = (email) => {
+    const usersData = JSON.parse(localStorage.getItem('routine_users')) || {}
+    if (usersData[email]) {
+      const newStatus = !usersData[email].isBlocked
+      usersData[email].isBlocked = newStatus
+      localStorage.setItem('routine_users', JSON.stringify(usersData))
+      
+      setAllUsers(allUsers.map(u => 
+        u.email === email ? { ...u, isBlocked: newStatus } : u
+      ))
+    }
   }
 
   const deleteUser = (email) => {
@@ -93,6 +107,7 @@ export default function Admin({ user }) {
               <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
                 <th style={{ padding: '1rem 0.5rem' }}>Name</th>
                 <th style={{ padding: '1rem 0.5rem' }}>Email</th>
+                <th style={{ padding: '1rem 0.5rem' }}>Status</th>
                 <th style={{ padding: '1rem 0.5rem' }}>Total Tasks</th>
                 <th style={{ padding: '1rem 0.5rem' }}>Completed</th>
                 <th style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>Action</th>
@@ -104,6 +119,13 @@ export default function Admin({ user }) {
                   <td style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>{u.name} {u.email==='admin@admin.com' && '(Admin)'}</td>
                   <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>{u.email}</td>
                   <td style={{ padding: '1rem 0.5rem' }}>
+                    {u.isBlocked ? (
+                      <span style={{ background: 'rgba(218, 54, 51, 0.1)', color: 'var(--danger-color)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600 }}>Blocked</span>
+                    ) : (
+                      <span style={{ background: 'rgba(46, 160, 67, 0.1)', color: 'var(--success-color)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600 }}>Active</span>
+                    )}
+                  </td>
+                  <td style={{ padding: '1rem 0.5rem' }}>
                     <span style={{ background: 'var(--bg-secondary)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.9rem' }}>
                       {u.routinesCount}
                     </span>
@@ -113,14 +135,24 @@ export default function Admin({ user }) {
                   </td>
                   <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>
                     {u.email !== 'admin@admin.com' && (
-                      <button 
-                        onClick={() => deleteUser(u.email)}
-                        className="btn-icon" 
-                        style={{ color: 'var(--danger-color)' }}
-                        title="Delete User"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                        <button 
+                          onClick={() => toggleBlockUser(u.email)}
+                          className="btn-icon" 
+                          style={{ color: u.isBlocked ? 'var(--text-secondary)' : '#ffa500' }}
+                          title={u.isBlocked ? "Unblock User" : "Block User"}
+                        >
+                          {u.isBlocked ? <CheckCircle size={18} /> : <Ban size={18} />}
+                        </button>
+                        <button 
+                          onClick={() => deleteUser(u.email)}
+                          className="btn-icon" 
+                          style={{ color: 'var(--danger-color)' }}
+                          title="Delete User"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>

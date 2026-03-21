@@ -30,6 +30,10 @@ export default function Login({ onLogin }) {
 
     if (isLogin) {
       const user = users[formData.email]
+      if (user && user.isBlocked) {
+        setError('Your account has been blocked by the admin.')
+        return
+      }
       if (user && user.password === formData.password) {
         onLogin({ email: formData.email, name: user.name })
       } else {
