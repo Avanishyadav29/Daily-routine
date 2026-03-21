@@ -14,7 +14,8 @@ export default function Admin({ user }) {
       email,
       name: usersData[email].name,
       password: usersData[email].password,
-      isBlocked: usersData[email].isBlocked || false
+      isBlocked: usersData[email].isBlocked || false,
+      photo: usersData[email].photo || null
     }))
 
     let totalRoutines = 0
@@ -116,7 +117,18 @@ export default function Admin({ user }) {
                 {allUsers.map((u) => (
                   <tr key={u.email} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
                     <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">
-                      {u.name} {u.email==='admin@admin.com' && <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-md border border-blue-200 dark:border-blue-500/20">Admin</span>}
+                      <div className="flex items-center gap-3">
+                        {u.photo ? (
+                          <img src={u.photo} alt="User" className="w-8 h-8 rounded-full object-cover border border-slate-300 dark:border-slate-600" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                            {u.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span>
+                          {u.name} {u.email==='admin@admin.com' && <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-md border border-blue-200 dark:border-blue-500/20">Admin</span>}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{u.email}</td>
                     <td className="px-6 py-4">

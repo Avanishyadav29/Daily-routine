@@ -58,6 +58,15 @@ function App() {
     navigate('/')
   }
 
+  const handleUpdateProfile = (updatedData) => {
+    const newUserData = { ...user, ...updatedData }
+    setUser(newUserData)
+    localStorage.setItem('daily_routine_session', JSON.stringify({
+      userData: newUserData,
+      timestamp: Date.now()
+    }))
+  }
+
   const handleLogout = () => {
     setUser(null)
     localStorage.removeItem('daily_routine_session')
@@ -75,7 +84,7 @@ function App() {
           />
           <Route 
             path="/" 
-            element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} 
+            element={user ? <Dashboard user={user} onUpdateProfile={handleUpdateProfile} /> : <Navigate to="/login" />} 
           />
           <Route 
             path="/admin" 

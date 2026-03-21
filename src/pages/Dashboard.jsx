@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from 'react'
-import { Plus, Trash2, Clock, CheckCircle2, Circle } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { Plus, Trash2, Clock, CheckCircle2, Circle, Edit2, Camera, X } from 'lucide-react'
 
-export default function Dashboard({ user }) {
+export default function Dashboard({ user, onUpdateProfile }) {
   const [routines, setRoutines] = useState([])
   const [newRoutine, setNewRoutine] = useState({ title: '', time: '' })
   const [isAdding, setIsAdding] = useState(false)
+  
+  // Profile Edit State
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [profileData, setProfileData] = useState({ name: user.name, photo: user.photo || '' })
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     const savedData = localStorage.getItem(`routines_${user.email}`)
@@ -43,6 +48,33 @@ export default function Dashboard({ user }) {
     setRoutines(routines.filter(item => item.id !== id))
   }
 
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setProfileData({ ...profileData, photo: reader.result })
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleSaveProfile = (e) => {
+    e.preventDefault()
+    
+    // Update local storage DB
+    const usersData = JSON.parse(localStorage.getItem('routine_users')) || {}
+    if (usersData[user.email]) {
+      usersData[user.email].name = profileData.name
+      usersData[user.email].photo = profileData.photo
+      localStorage.setItem('routine_users', JSON.stringify(usersData))
+    }
+    
+    // Update active session State
+    onUpdateProfile(profileData)
+    setIsEditingProfile(false)
+  }
+
   const completedCount = routines.filter(r => r.isCompleted).length
   const totalCount = routines.length
   const progress = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100)
@@ -50,15 +82,36 @@ export default function Dashboard({ user }) {
   return (
     <div className="max-w-3xl mx-auto animate-fade-in pb-10">
       
+      {/* Profile Header Card */}
       <div className="glass-card p-6 sm:p-8 mb-8 relative overflow-hidden group transition-all">
         <div className="absolute top-0 right-0 p-10 opacity-[0.05] dark:opacity-10 group-hover:opacity-20 transition-opacity">
           <Clock className="w-40 h-40 transform rotate-12 text-slate-800 dark:text-white" />
         </div>
         
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2 relative z-10 transition-colors">
-          Hello, {user.name.split(' ')[0]} 👋
-        </h1>
-        <p className="text-slate-600 dark:text-slate-400 mb-8 relative z-10 text-lg transition-colors">Here is your daily routine progress.</p>
+        <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center relative z-10 mb-8">
+          <div className="relative group/avatar cursor-pointer" onClick={() => setIsEditingProfile(true)}>
+            {user.photo ? (
+               <img src={user.photo} alt="Profile" className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-white/20 dark:border-slate-700/50 shadow-xl" />
+            ) : (
+               <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-white text-3xl font-bold border-4 border-white/20 dark:border-slate-700/50 shadow-xl">
+                 {user.name.charAt(0).toUpperCase()}
+               </div>
+            )}
+            <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+              <Edit2 className="text-white w-6 h-6" />
+            </div>
+          </div>
+          
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1 transition-colors flex items-center gap-3">
+              Hello, {user.name.split(' ')[0]} 👋
+              <button onClick={() => setIsEditingProfile(true)} className="text-slate-400 hover:text-blue-500 transition-colors p-1" title="Edit Profile">
+                <Edit2 className="w-5 h-5" />
+              </button>
+            </h1>
+            <p className="text-slate-600 dark:text-slate-400 text-lg transition-colors">Here is your daily routine progress.</p>
+          </div>
+        </div>
         
         <div className="bg-white/80 dark:bg-slate-900/50 rounded-2xl p-5 border border-slate-200 dark:border-slate-700/50 relative z-10 transition-colors">
           <div className="flex justify-between items-end mb-3">
@@ -73,6 +126,63 @@ export default function Dashboard({ user }) {
           </div>
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      {isEditingProfile && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="glass-card w-full max-w-md p-6 bg-white dark:bg-slate-900 relative">
+            <button 
+              onClick={() => setIsEditingProfile(false)}
+              className="absolute top-4 right-4 text-slate-500 hover:text-red-500 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Edit Profile</h2>
+            
+            <form onSubmit={handleSaveProfile} className="flex flex-col gap-6">
+              <div className="flex flex-col items-center gap-4">
+                <div 
+                  className="relative w-28 h-28 rounded-full border-4 border-slate-200 dark:border-slate-700 overflow-hidden cursor-pointer group"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {profileData.photo ? (
+                    <img src={profileData.photo} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                      <Camera className="w-8 h-8" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+                <input 
+                  type="file" 
+                  accept="image/png, image/jpeg, image/webp" 
+                  ref={fileInputRef} 
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
+                <p className="text-xs text-slate-500">Only JPG, PNG and WEBP</p>
+              </div>
+
+              <div>
+                <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-400">Display Name</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  value={profileData.name} 
+                  onChange={e => setProfileData({...profileData, name: e.target.value})} 
+                  required
+                />
+              </div>
+
+              <button type="submit" className="btn-primary w-full mt-2">Save Changes</button>
+            </form>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white transition-colors">Your Tasks</h2>

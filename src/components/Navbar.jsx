@@ -29,9 +29,13 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
             </Link>
           )}
           
-          <div className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-slate-100 dark:bg-slate-800/50 rounded-full border border-slate-300 dark:border-slate-700/50 transition-colors">
-            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
-            <span className="hidden sm:inline font-medium text-sm text-slate-800 dark:text-slate-200">{user.name.split(' ')[0]}</span>
+          <div className="flex items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 bg-slate-100 dark:bg-slate-800/50 rounded-full border border-slate-300 dark:border-slate-700/50 transition-colors">
+            {user.photo ? (
+               <img src={user.photo} alt="User" className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover" />
+            ) : (
+               <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 ml-1" />
+            )}
+            <span className="hidden sm:inline font-medium text-sm text-slate-800 dark:text-slate-200 mr-2">{user.name.split(' ')[0]}</span>
           </div>
           
           <button onClick={onLogout} className="p-2 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/10 rounded-full transition-all" title="Logout">
