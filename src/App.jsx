@@ -1,109 +1,73 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  updateProfile
-} from 'firebase/auth'
-import {
-  doc, setDoc, getDoc, collection, getDocs, updateDoc, deleteDoc
-} from 'firebase/firestore'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'firebase/auth'
+import { doc, setDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Profile from './pages/Profile'
 import Admin from './pages/Admin'
+import Timer from './pages/Timer'
+import Leaderboard from './pages/Leaderboard'
+import Inbox from './pages/Inbox'
 import Navbar from './components/Navbar'
 
 function App() {
   const [user, setUser] = useState(null)
-  const [userDbData, setUserDbData] = useState(null)
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
-  // Theme
   useEffect(() => {
-    const savedTheme = localStorage.getItem('daily_routine_theme')
-    if (savedTheme === 'light') {
-      setIsDarkMode(false)
-      document.documentElement.classList.remove('dark')
-    } else {
-      setIsDarkMode(true)
-      document.documentElement.classList.add('dark')
-    }
+    const saved = localStorage.getItem('daily_routine_theme')
+    if (saved === 'light') { setIsDarkMode(false); document.documentElement.classList.remove('dark') }
+    else { setIsDarkMode(true); document.documentElement.classList.add('dark') }
   }, [])
 
   const toggleTheme = () => {
-    if (isDarkMode) {
-      document.documentElement.classList.remove('dark')
-      localStorage.setItem('daily_routine_theme', 'light')
-      setIsDarkMode(false)
-    } else {
-      document.documentElement.classList.add('dark')
-      localStorage.setItem('daily_routine_theme', 'dark')
-      setIsDarkMode(true)
-    }
+    if (isDarkMode) { document.documentElement.classList.remove('dark'); localStorage.setItem('daily_routine_theme', 'light'); setIsDarkMode(false) }
+    else { document.documentElement.classList.add('dark'); localStorage.setItem('daily_routine_theme', 'dark'); setIsDarkMode(true) }
   }
 
-  // Auth State Listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const userRef = doc(db, 'users', firebaseUser.uid)
-        const userSnap = await getDoc(userRef)
-        const dbData = userSnap.exists() ? userSnap.data() : {}
-        
-        if (dbData.isBlocked) {
-          await signOut(auth)
-          setUser(null)
-          setUserDbData(null)
-        } else {
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: dbData.name || firebaseUser.displayName || 'User', photo: dbData.photo || null, mobile: dbData.mobile || '' })
-          setUserDbData(dbData)
-        }
+        const unsubUser = onSnapshot(userRef, (snap) => {
+          const data = snap.data() || {}
+          if (data.isBlocked) { signOut(auth); setUser(null); setLoading(false); return }
+          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: data.name || firebaseUser.displayName || 'User', photo: data.photo || null, mobile: data.mobile || '', violation: data.violation || false })
+          setLoading(false)
+        })
+        return () => unsubUser()
       } else {
-        setUser(null)
-        setUserDbData(null)
+        setUser(null); setLoading(false)
       }
-      setLoading(false)
     })
-    return () => unsubscribe()
+    return () => unsub()
   }, [])
 
   const handleLogin = async (email, password) => {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password)
+    await signInWithEmailAndPassword(auth, email, password)
     navigate('/')
-    return userCredential
   }
 
   const handleSignup = async (email, password, name, mobile) => {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-    const firebaseUser = userCredential.user
-    await updateProfile(firebaseUser, { displayName: name })
-    await setDoc(doc(db, 'users', firebaseUser.uid), {
-      name,
-      email,
-      mobile: mobile || '',
-      photo: '',
-      isBlocked: false,
-      createdAt: new Date().toISOString()
-    })
+    const cred = await createUserWithEmailAndPassword(auth, email, password)
+    await updateProfile(cred.user, { displayName: name })
+    await setDoc(doc(db, 'users', cred.user.uid), { name, email, mobile: mobile || '', photo: '', isBlocked: false, violation: false, createdAt: new Date().toISOString() })
     navigate('/')
   }
 
   const handleUpdateProfile = async (updatedData) => {
     if (!user) return
-    const userRef = doc(db, 'users', user.uid)
-    await updateDoc(userRef, updatedData)
+    await updateDoc(doc(db, 'users', user.uid), updatedData)
     setUser(prev => ({ ...prev, ...updatedData }))
   }
 
   const handleLogout = async () => {
+    if (user?.uid) await updateDoc(doc(db, 'users', user.uid), { activeSession: null }).catch(() => {})
     await signOut(auth)
-    setUser(null)
     navigate('/login')
   }
 
@@ -121,22 +85,13 @@ function App() {
       <Navbar user={user} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Routes>
-          <Route
-            path="/login"
-            element={user ? <Navigate to="/" /> : <Login onLogin={handleLogin} onSignup={handleSignup} />}
-          />
-          <Route
-            path="/"
-            element={user ? <Dashboard user={user} /> : <Navigate to="/login" />}
-          />
-          <Route
-            path="/profile"
-            element={user ? <Profile user={user} onUpdateProfile={handleUpdateProfile} /> : <Navigate to="/login" />}
-          />
-          <Route
-            path="/admin"
-            element={user ? <Admin user={user} /> : <Navigate to="/login" />}
-          />
+          <Route path="/login" element={user ? <Navigate to="/" /> : <Login onLogin={handleLogin} onSignup={handleSignup} />} />
+          <Route path="/" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
+          <Route path="/timer" element={user ? <Timer user={user} /> : <Navigate to="/login" />} />
+          <Route path="/leaderboard" element={user ? <Leaderboard user={user} /> : <Navigate to="/login" />} />
+          <Route path="/inbox" element={user ? <Inbox user={user} /> : <Navigate to="/login" />} />
+          <Route path="/profile" element={user ? <Profile user={user} onUpdateProfile={handleUpdateProfile} /> : <Navigate to="/login" />} />
+          <Route path="/admin" element={user ? <Admin user={user} /> : <Navigate to="/login" />} />
         </Routes>
       </div>
     </div>

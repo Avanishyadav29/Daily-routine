@@ -1,45 +1,73 @@
 import React from 'react'
-import { LogOut, Sun, Moon, Calendar, Shield, User } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { LogOut, Sun, Moon, Shield, User, Timer, Trophy, MessageSquare } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
 
 export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
+  const location = useLocation()
+  const isActive = (path) => location.pathname === path
+
   if (!user) return null
 
+  const navLinks = [
+    { to: '/', icon: null, label: 'Dashboard' },
+    { to: '/timer', icon: <Timer className="w-4 h-4" />, label: 'Timer' },
+    { to: '/leaderboard', icon: <Trophy className="w-4 h-4" />, label: 'Board' },
+    { to: '/inbox', icon: <MessageSquare className="w-4 h-4" />, label: 'Inbox' },
+  ]
+
   return (
-    <nav className="sticky top-0 z-50 bg-white/70 dark:bg-white/5 backdrop-blur-xl border-b border-slate-200 dark:border-white/10 transition-colors duration-300">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 text-slate-900 dark:text-slate-100 hover:opacity-80 transition-opacity">
-          <Sun className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-          <span className="text-xl font-bold tracking-wide">MyRoutine</span>
+    <nav className="sticky top-0 z-50 backdrop-blur-xl bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800/50 shadow-sm">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center gap-4">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2.5 font-extrabold text-xl text-slate-900 dark:text-white shrink-0">
+          <div className="p-1.5 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl text-white shadow">
+            <Sun className="w-5 h-5" />
+          </div>
+          <span className="hidden sm:block">MyRoutine</span>
         </Link>
-        
-        <div className="flex items-center gap-2 sm:gap-4">
-          <button 
-            onClick={toggleTheme} 
-            className="p-2 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all"
-            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            {isDarkMode ? <Sun className="w-5 h-5 sm:w-6 sm:h-6" /> : <Moon className="w-5 h-5 sm:w-6 sm:h-6" />}
+
+        {/* Center Nav Links */}
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/50 rounded-2xl p-1 overflow-x-auto">
+          {navLinks.map(link => (
+            <Link
+              key={link.to}
+              to={link.to}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
+                isActive(link.to)
+                  ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              {link.icon}
+              {link.label}
+            </Link>
+          ))}
+        </div>
+
+        {/* Right Side */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={toggleTheme} className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all" title="Toggle Theme">
+            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
-          
-          {user.email === 'admin@admin.com' && (
-            <Link to="/admin" className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded-full border border-blue-200 dark:border-blue-500/20 hover:bg-blue-200 dark:hover:bg-blue-500/20 transition-all">
-              <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline font-semibold text-sm">Admin</span>
+
+          {user.email === 'admin@daily.com' && (
+            <Link to="/admin" className={`flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-full transition-all ${isActive('/admin') ? 'bg-blue-600 text-white' : 'bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-500/20'}`}>
+              <Shield className="w-4 h-4" />
+              <span className="hidden sm:inline">Admin</span>
             </Link>
           )}
 
-          <Link to="/profile" className="flex items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 bg-slate-100 dark:bg-slate-800/50 rounded-full border border-slate-300 dark:border-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors group">
+          <Link to="/profile" className={`flex items-center gap-2 px-2 py-1.5 rounded-full border transition-colors group ${isActive('/profile') ? 'border-blue-400 bg-blue-50 dark:bg-blue-500/10' : 'border-slate-300 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
             {user.photo ? (
-               <img src={user.photo} alt="User" className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover border border-slate-300 dark:border-slate-600 group-hover:opacity-80 transition-opacity" />
+              <img src={user.photo} alt="User" className="w-7 h-7 rounded-full object-cover border border-slate-300 dark:border-slate-600" />
             ) : (
-               <User className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400 ml-1" />
+              <User className="w-4 h-4 text-indigo-600 dark:text-indigo-400 ml-1" />
             )}
-            <span className="hidden sm:inline font-medium text-sm text-slate-800 dark:text-slate-200 mr-2 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">{user.name.split(' ')[0]}</span>
+            <span className="hidden sm:inline font-medium text-sm text-slate-800 dark:text-slate-200 mr-1">{user.name.split(' ')[0]}</span>
           </Link>
-          
+
           <button onClick={onLogout} className="p-2 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/10 rounded-full transition-all" title="Logout">
-            <LogOut className="w-5 h-5 sm:w-6 sm:h-6" />
+            <LogOut className="w-5 h-5" />
           </button>
         </div>
       </div>
