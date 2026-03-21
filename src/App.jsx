@@ -11,21 +11,33 @@ function App() {
 
   useEffect(() => {
     // Check local storage for user
-    const loggedInUser = localStorage.getItem('daily_routine_user')
-    if (loggedInUser) {
-      setUser(JSON.parse(loggedInUser))
+    const sessionData = localStorage.getItem('daily_routine_session')
+    if (sessionData) {
+      const { userData, timestamp } = JSON.parse(sessionData)
+      // Check if session has expired (e.g. 24 hours)
+      const isExpired = Date.now() - timestamp > 24 * 60 * 60 * 1000
+      
+      if (isExpired) {
+        localStorage.removeItem('daily_routine_session')
+        setUser(null)
+      } else {
+        setUser(userData)
+      }
     }
   }, [])
 
   const handleLogin = (userData) => {
     setUser(userData)
-    localStorage.setItem('daily_routine_user', JSON.stringify(userData))
+    localStorage.setItem('daily_routine_session', JSON.stringify({
+      userData,
+      timestamp: Date.now()
+    }))
     navigate('/')
   }
 
   const handleLogout = () => {
     setUser(null)
-    localStorage.removeItem('daily_routine_user')
+    localStorage.removeItem('daily_routine_session')
     navigate('/login')
   }
 

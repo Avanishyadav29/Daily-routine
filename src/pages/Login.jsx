@@ -10,7 +10,7 @@ export default function Login({ onLogin }) {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
@@ -20,10 +20,26 @@ export default function Login({ onLogin }) {
       return
     }
 
-    if (!isLogin && !formData.name) {
-      setError('Please enter your name')
-      return
+    if (!isLogin) {
+      if (!formData.name) {
+        setError('Please enter your name')
+        return
+      }
+      
+      // Password Strength Validation for New Users
+      const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+      if (!strongPasswordRegex.test(formData.password)) {
+        setError('Password must be 8+ chars and include an uppercase letter, a lowercase letter, a number, and a special character (@$!%*?&).')
+        return
+      }
     }
+
+    // Secure Password Hashing (SHA-256)
+    const encoder = new TextEncoder();
+    const data = encoder.encode(formData.password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashedPassword = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 
     // Mock Authentication Logic using LocalStorage
     const users = JSON.parse(localStorage.getItem('routine_users')) || {}
@@ -34,7 +50,8 @@ export default function Login({ onLogin }) {
         setError('Your account has been blocked by the admin.')
         return
       }
-      if (user && user.password === formData.password) {
+      // Added fallback to plaintext to support older test accounts like admin@admin.com until reset
+      if (user && (user.password === hashedPassword || user.password === formData.password)) {
         onLogin({ email: formData.email, name: user.name })
       } else {
         setError('Invalid email or password')
@@ -43,7 +60,7 @@ export default function Login({ onLogin }) {
       if (users[formData.email]) {
         setError('User already exists. Please login.')
       } else {
-        users[formData.email] = { name: formData.name, password: formData.password }
+        users[formData.email] = { name: formData.name, password: hashedPassword, isBlocked: false }
         localStorage.setItem('routine_users', JSON.stringify(users))
         onLogin({ email: formData.email, name: formData.name })
       }
