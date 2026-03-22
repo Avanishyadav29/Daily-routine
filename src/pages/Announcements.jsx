@@ -47,7 +47,13 @@ export default function Announcements({ user, clearBadge }) {
     const file = e.target.files[0]
     if (!file) return
     const isImage = file.type.startsWith('image/')
-    setAttachment({ file, preview: isImage ? URL.createObjectURL(file) : null, type: isImage ? 'image' : 'file', name: file.name })
+    const isVideo = file.type.startsWith('video/')
+    setAttachment({ 
+      file, 
+      preview: (isImage || isVideo) ? URL.createObjectURL(file) : null, 
+      type: isImage ? 'image' : isVideo ? 'video' : 'file', 
+      name: file.name 
+    })
   }
 
   const handlePost = async () => {
@@ -168,9 +174,9 @@ export default function Announcements({ user, clearBadge }) {
 
           <div className="flex justify-between items-center mt-3">
             <div>
-              <input ref={fileRef} type="file" className="hidden" accept="image/*,.pdf,.doc,.docx,.txt" onChange={handleFile} />
+              <input ref={fileRef} type="file" className="hidden" accept="image/*,video/*,.pdf,.doc,.docx,.txt" onChange={handleFile} />
               <button disabled={uploading} onClick={() => fileRef.current?.click()} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-all disabled:opacity-50">
-                <Paperclip className="w-4 h-4" /> Attributes
+                <Paperclip className="w-4 h-4" /> Media / Attributes
               </button>
             </div>
             <button onClick={handlePost} disabled={uploading || (!text.trim() && !attachment)} className="btn-primary py-2 px-6 shadow-blue-500/20 disabled:opacity-50 text-sm">
@@ -230,6 +236,9 @@ export default function Announcements({ user, clearBadge }) {
               <a href={a.fileUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all">
                 <Paperclip className="w-4 h-4" /> Download {a.fileName || 'Attachment'}
               </a>
+            )}
+            {a.fileUrl && a.fileType === 'video' && (
+               <video src={a.fileUrl} controls className="mt-4 rounded-2xl max-h-[400px] w-full border border-slate-200 dark:border-slate-700 bg-black shadow-md mt-4" />
             )}
           </div>
         ))}

@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { MessageSquare, Send, Trash2, Ban, ShieldAlert, X, AlertTriangle, ShieldCheck } from 'lucide-react'
-import { db } from '../firebase'
+import { MessageSquare, Send, Trash2, Ban, ShieldAlert, X, AlertTriangle, ShieldCheck, Paperclip, Image as ImageIcon } from 'lucide-react'
+import { db, storage } from '../firebase'
 import { collection, addDoc, onSnapshot, query, orderBy, limit, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
-const BAD_WORDS = ['gaali', 'harami', 'kamina', 'saala', 'bewakoof', 'chutiya', 'madarchod', 'behenchod']
+const BAD_WORDS = ['gaali', 'harami', 'kamina', 'saala', 'bewakoof', 'chutiya', 'madarchod', 'behenchod', 'bsdk', 'gand', 'gaand', 'randi', 'bhosadi', 'porn', 'sex', 'lund', 'lavde', 'lawde']
 
 export default function Townhall({ user, clearBadge }) {
   const [messages, setMessages] = useState([])
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(true)
+  const [attachment, setAttachment] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef(null)
   const bottomRef = useRef(null)
   
   const isAdmin = user?.email === 'admin@daily.com'
@@ -33,8 +37,28 @@ export default function Townhall({ user, clearBadge }) {
   }, [messages])
 
   const handleSend = async () => {
-    if (!text.trim()) return
     const msgText = text.trim()
+    if (!msgText && !attachment) return
+
+    // Link Protection: Only Admin can share links
+    const urlPattern = /(https?:\/\/[^\s]+)/gi;
+    if (!isAdmin && urlPattern.test(msgText)) {
+      alert("⚠️ Links are not allowed in Townhall for security purposes. Only Admin can share links.")
+      return
+    }
+
+    let fileData = null
+    if (attachment && isAdmin) {
+      setUploading(true)
+      try {
+        const path = `townhall-attachments/${Date.now()}_${attachment.file.name}`
+        const sRef = ref(storage, path)
+        await uploadBytes(sRef, attachment.file)
+        const url = await getDownloadURL(sRef)
+        fileData = { url, type: attachment.type, name: attachment.name }
+      } catch (err) { alert("Upload failed.") }
+      setUploading(false)
+    }
 
     // Auto-moderation check
     const hasBadWord = BAD_WORDS.some(word => msgText.toLowerCase().includes(word.toLowerCase()))
@@ -61,6 +85,7 @@ export default function Townhall({ user, clearBadge }) {
         alert(`⚠️ Warning #${currentWarnings + 1}: Bad words detected! Repeating this will result in an account block.`)
       }
       setText('')
+      setAttachment(null)
       return
     }
 
@@ -76,9 +101,18 @@ export default function Townhall({ user, clearBadge }) {
       fromUsername: user.username || '',
       fromPhoto: user.photo || null,
       role: user.role || 'user',
+      attachment: fileData,
       createdAt: new Date().toISOString(),
     })
     setText('')
+    setAttachment(null)
+  }
+
+  const handleFile = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const isImage = file.type.startsWith('image/')
+    setAttachment({ file, preview: isImage ? URL.createObjectURL(file) : null, type: isImage ? 'image' : 'file', name: file.name })
   }
 
   const handleDelete = async (id) => {
@@ -147,6 +181,17 @@ export default function Townhall({ user, clearBadge }) {
                 <span className="text-[10px] text-slate-400 ml-1">{new Date(m.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
               </div>
               <div className="bg-white dark:bg-slate-800/50 p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 text-sm leading-relaxed text-slate-700 dark:text-slate-200 inline-block max-w-full break-words">
+                {m.attachment && (
+                  <div className="mb-2">
+                    {m.attachment.type === 'image' ? (
+                       <a href={m.attachment.url} target="_blank" rel="noreferrer"><img src={m.attachment.url} className="max-w-xs rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm" alt="" /></a>
+                    ) : m.attachment.type === 'video' ? (
+                       <video src={m.attachment.url} controls className="max-w-xs rounded-xl border border-slate-100 dark:border-slate-700 bg-black shadow-sm" />
+                    ) : (
+                      <a href={m.attachment.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-900 rounded-lg text-[10px] font-bold text-blue-500"><Paperclip className="w-3 h-3" /> {m.attachment.name}</a>
+                    )}
+                  </div>
+                )}
                 {renderMessageContent(m.text)}
               </div>
               
@@ -180,19 +225,33 @@ export default function Townhall({ user, clearBadge }) {
           </div>
         ) : (
           <>
+            {attachment && (
+              <div className="flex items-center gap-2 mb-3 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-fade-in border border-slate-200 dark:border-slate-700">
+                {attachment.preview ? <img src={attachment.preview} className="w-8 h-8 rounded-lg object-cover" alt="" /> : <Paperclip className="w-4 h-4 text-slate-400" />}
+                <span className="text-[10px] text-slate-600 dark:text-slate-300 flex-1 truncate font-bold uppercase tracking-tight">{attachment.name}</span>
+                <button onClick={() => setAttachment(null)} className="text-slate-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+              </div>
+            )}
             <div className="flex gap-2">
+                {isAdmin && (
+                  <>
+                    <input ref={fileRef} type="file" className="hidden" accept="image/*,video/*,.pdf,.doc,.docx" onChange={handleFile} />
+                    <button onClick={() => fileRef.current?.click()} className="p-3 text-slate-400 hover:text-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 rounded-2xl transition-all"><Paperclip className="w-5 h-5" /></button>
+                  </>
+                )}
                 <input 
                   className="flex-1 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-slate-900 dark:text-white"
-                  placeholder="Message Global Community..."
+                  placeholder={isAdmin ? "Share official update (links allowed)..." : "Message Global Community..."}
                   value={text}
                   onChange={e => setText(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSend()}
                 />
                 <button 
                   onClick={handleSend}
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white p-3 rounded-2xl shadow-lg shadow-cyan-600/20 transition-all flex items-center justify-center active:scale-95"
+                  disabled={uploading}
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white p-3 rounded-2xl shadow-lg shadow-cyan-600/20 transition-all flex items-center justify-center active:scale-95 disabled:opacity-50"
                 >
-                  <Send className="w-5 h-5" />
+                  {uploading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : <Send className="w-5 h-5" />}
                 </button>
             </div>
             <p className="text-[9px] text-center text-slate-400 mt-2 font-bold uppercase tracking-widest flex items-center justify-center gap-1">

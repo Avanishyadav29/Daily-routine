@@ -228,6 +228,13 @@ export default function Admin({ user }) {
     alert(`Deleted ${total} messages.`)
   }
 
+  const clearUserInbox = async (uid, email) => {
+    if (!window.confirm(`Clear all inbox messages for ${email}?`)) return
+    const inboxSnap = await getDocs(collection(db, 'users', uid, 'inbox'))
+    for (const d of inboxSnap.docs) await deleteDoc(d.ref)
+    alert("Inbox cleared.")
+  }
+
   const formatTime = (secs) => {
     if (!secs) return '0m'
     const h = Math.floor(secs / 3600); const m = Math.floor((secs % 3600) / 60)
@@ -459,7 +466,10 @@ export default function Admin({ user }) {
               </div>
             </div>
             
-            <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-800 flex justify-end gap-3">
+            <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-800 flex justify-between gap-3">
+               <button onClick={() => clearUserInbox(selectedUser.uid, selectedUser.email)} className="px-5 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-[10px] uppercase flex items-center gap-2">
+                  <MessageSquare className="w-3 h-3" /> Purge Inbox Chat
+               </button>
                <button onClick={() => { deleteUser(selectedUser.uid, selectedUser.email); setSelectedUser(null); }} className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-xs flex items-center gap-2">
                   <Trash2 className="w-4 h-4" /> Wipe & Delete Profile
                </button>

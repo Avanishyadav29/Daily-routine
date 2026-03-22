@@ -75,7 +75,15 @@ export default function Inbox({ user, clearBadge }) {
   const sendMessage = async () => {
     const targetUid = isAdmin ? selectedUser?.uid : user.uid
     if (!targetUid) return
-    if (!text.trim() && !attachment) return
+    const msgText = text.trim()
+    if (!msgText && !attachment) return
+
+    // Link Protection: Only Admin can share links
+    const urlPattern = /(https?:\/\/[^\s]+)/gi;
+    if (!isAdmin && urlPattern.test(msgText)) {
+      alert("⚠️ Links are not allowed in Inbox for security purposes. Only Admin can share links.")
+      return
+    }
 
     let fileUrl = null
     let fileType = null
