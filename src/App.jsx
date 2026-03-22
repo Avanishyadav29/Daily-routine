@@ -23,6 +23,7 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [unreadCounts, setUnreadCounts] = useState({ inbox: 0, announcements: 0, townhall: 0 })
   const [isProfileIncomplete, setIsProfileIncomplete] = useState(false)
+  const [currentSession] = useState(() => Math.random().toString(36).substring(7))
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -50,6 +51,14 @@ function App() {
             return
           }
           if (data.isBlocked) { signOut(auth); setUser(null); setLoading(false); return }
+          
+          // Single Session Enforcement (Skip for Admin)
+          if (firebaseUser.email !== 'admin@daily.com' && data.sessionId && data.sessionId !== currentSession) {
+             handleLogout()
+             alert("Session Expired: You have been logged in on another device.")
+             return
+          }
+
           setIsProfileIncomplete(false)
           setUser({ 
             uid: firebaseUser.uid, 
@@ -85,7 +94,18 @@ function App() {
           setUnreadCounts(prev => ({ ...prev, townhall: novel }))
         })
 
-        return () => { unsubUser(); unsubInbox(); unsubAnn(); unsubTH() }
+        // Admin Remote Logout listener
+        let unsubAdminSess = () => {}
+        if (firebaseUser.email === 'admin@daily.com') {
+           unsubAdminSess = onSnapshot(doc(db, 'users', firebaseUser.uid, 'sessions', currentSession), (snap) => {
+              if (!snap.exists()) {
+                 handleLogout()
+                 alert("Session Terminated: This session was logged out by the administrator.")
+              }
+           })
+        }
+
+        return () => { unsubUser(); unsubInbox(); unsubAnn(); unsubTH(); unsubAdminSess() }
       } else {
         setUser(null); setLoading(false)
       }
@@ -99,14 +119,34 @@ function App() {
   }
 
   const handleLogin = async (email, password) => {
-    await signInWithEmailAndPassword(auth, email, password)
+    const cred = await signInWithEmailAndPassword(auth, email, password)
+    if (email !== 'admin@daily.com') {
+       await updateDoc(doc(db, 'users', cred.user.uid), { sessionId: currentSession })
+    } else {
+       // Track admin sessions for the dashboard
+       await setDoc(doc(db, 'users', cred.user.uid, 'sessions', currentSession), { 
+          userAgent: navigator.userAgent, 
+          lastActive: new Date().toISOString(),
+          ip: 'unavailable' // Client-side cannot get IP easily without external API
+       })
+    }
     navigate('/')
   }
 
   const handleSignup = async (email, password, name, mobile, username) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(cred.user, { displayName: name })
-    await setDoc(doc(db, 'users', cred.user.uid), { name, username: username || '', email, mobile: mobile || '', photo: '', isBlocked: false, violation: false, createdAt: new Date().toISOString() })
+    await setDoc(doc(db, 'users', cred.user.uid), { 
+      name, 
+      username: username || '', 
+      email, 
+      mobile: mobile || '', 
+      photo: '', 
+      isBlocked: false, 
+      violation: false, 
+      createdAt: new Date().toISOString(),
+      sessionId: currentSession 
+    })
     navigate('/')
   }
 

@@ -1,13 +1,16 @@
 {
   "name": "daily-routine",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "main": "main.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron": "electron .",
+    "electron:build": "npm run build && electron-builder"
   },
   "dependencies": {
     "firebase": "^12.11.0",
@@ -23,6 +26,9 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.27",
+    "electron": "^41.0.3",
+    "electron-builder": "^26.8.1",
+    "electron-is-dev": "^3.0.1",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
@@ -30,5 +36,16 @@
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.dailyroutine.timearena",
+    "productName": "Time Arena",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "public/favicon.ico"
+    }
   }
 }

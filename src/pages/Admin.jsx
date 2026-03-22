@@ -83,13 +83,15 @@ export default function Admin({ user }) {
   const [selectedUser, setSelectedUser] = useState(null)
   const [userSessions, setUserSessions] = useState([])
   const [loadingSessions, setLoadingSessions] = useState(false)
-  const [activeTab, setActiveTab] = useState('users') // 'users' | 'feedback'
+  const [activeTab, setActiveTab] = useState('users') // 'users' | 'feedback' | 'security'
   const [feedbacks, setFeedbacks] = useState([])
   const [showCreateUser, setShowCreateUser] = useState(false)
   const [newUserData, setNewUserData] = useState({ name: '', username: '', email: '', password: '', role: 'user' })
   const [creatingUser, setCreatingUser] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [adminSessions, setAdminSessions] = useState([])
+  const [terminating, setTerminating] = useState(false)
 
   useEffect(() => {
     if (user?.email !== 'admin@daily.com') return
@@ -102,8 +104,19 @@ export default function Admin({ user }) {
       setAllUsers(usersList)
       setStats(prev => ({ ...prev, totalUsers: usersSnap.size }))
     })
-    return () => unsub()
-  }, [user])
+
+    // Fetch Admin Sessions
+    const qSessions = query(collection(db, 'users', user.uid, 'sessions'), orderBy('lastActive', 'desc'))
+    const unsubSessions = onSnapshot(qSessions, (snap) => {
+      setAdminSessions(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    })
+
+    const unsubFeed = onSnapshot(collection(db, 'feedback'), (feedSnap) => {
+      setFeedbacks(feedSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt)))
+    })
+
+    return () => { unsub(); unsubSessions(); unsubFeed() }
+  }, [user?.uid, user?.email])
 
   useEffect(() => {
     if (allUsers.length === 0) return
@@ -117,14 +130,6 @@ export default function Admin({ user }) {
     }
     getGlobalStats()
   }, [allUsers.length])
-
-  useEffect(() => {
-    if (user?.email !== 'admin@daily.com') return
-    const unsub = onSnapshot(collection(db, 'feedback'), (snap) => {
-      setFeedbacks(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt)))
-    })
-    return () => unsub()
-  }, [user])
 
   if (user?.email !== 'admin@daily.com') return <Navigate to="/" />
 
@@ -235,6 +240,14 @@ export default function Admin({ user }) {
     alert("Inbox cleared.")
   }
 
+  const terminateSession = async (sid) => {
+    if (sid === user.sessionId) { alert("You cannot terminate your own active session!"); return }
+    if (!window.confirm("Remote logout this device?")) return
+    setTerminating(true)
+    await deleteDoc(doc(db, 'users', user.uid, 'sessions', sid))
+    setTerminating(false)
+  }
+
   const formatTime = (secs) => {
     if (!secs) return '0m'
     const h = Math.floor(secs / 3600); const m = Math.floor((secs % 3600) / 60)
@@ -272,6 +285,7 @@ export default function Admin({ user }) {
         <div className="flex gap-2 bg-slate-100 dark:bg-slate-800/40 p-1 rounded-xl w-fit shrink-0">
           <button onClick={() => setActiveTab('users')} className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === 'users' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}>Users</button>
           <button onClick={() => setActiveTab('feedback')} className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === 'feedback' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}>Feedback ({feedbacks.length})</button>
+          <button onClick={() => setActiveTab('security')} className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === 'security' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}>Security</button>
         </div>
         
         {activeTab === 'users' && (
@@ -287,88 +301,125 @@ export default function Admin({ user }) {
         )}
       </div>
 
-      {activeTab === 'feedback' ? (
-        <div className="space-y-5">
-          {feedbacks.map(fb => (
-            <div key={fb.id} className="bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-2xl p-5 shadow-sm">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                   <div className="font-bold text-slate-900 dark:text-white">{fb.userName} <span className="text-blue-400 text-xs">@{fb.username}</span></div>
-                   <div className="text-xs text-slate-400">{new Date(fb.submittedAt).toLocaleDateString()}</div>
-                </div>
-                <div className="flex items-center gap-1">
-                   {[...Array(5)].map((_, i) => <Star key={i} className={`w-4 h-4 ${i < fb.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'}`} />)}
+        {activeTab === 'users' ? (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+              <div className="glass-card p-4">
+                <div className="text-2xl font-black text-blue-600">{stats.totalUsers}</div>
+                <div className="text-xs text-slate-500 uppercase">Total Users</div>
+              </div>
+              <div className="glass-card p-4">
+                <div className="text-2xl font-black text-green-600">{stats.totalRoutines}</div>
+                <div className="text-xs text-slate-500 uppercase">Total Routines</div>
+              </div>
+              <div className="glass-card p-4">
+                <div className="text-2xl font-black text-purple-600">{allUsers.filter(u => u.activeSession?.status === 'running').length}</div>
+                <div className="text-xs text-slate-500 uppercase">Live Now</div>
+              </div>
+              <div className="glass-card p-4">
+                <div className="text-2xl font-black text-red-600">{allUsers.filter(u => u.violation).length}</div>
+                <div className="text-xs text-slate-500 uppercase">Violations</div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-3xl p-6 mb-8 shadow-sm">
+               <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-cyan-500/10 text-cyan-500 rounded-xl"><Activity className="w-5 h-5" /></div>
+                  <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-tight text-sm">Townhall Controls</h3>
+               </div>
+               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <button onClick={() => clearTownhallMessages('today')} className="px-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs font-bold hover:bg-slate-200 transition-all">Clear Today's Chat</button>
+                  <button onClick={() => clearTownhallMessages('yesterday')} className="px-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs font-bold hover:bg-slate-200 transition-all">Clear Yesterday's Chat</button>
+                  <button onClick={() => clearTownhallMessages('all')} className="px-4 py-3 bg-red-500 text-white rounded-2xl text-xs font-bold hover:bg-red-600 transition-all">Clear All History</button>
+               </div>
+            </div>
+
+            {/* SECTION 1: STAFF */}
+            {staffUsers.length > 0 && (
+              <div className="mb-10">
+                <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                   <Shield className="w-5 h-5 text-blue-500" /> Staff & Management
+                   <span className="text-[10px] bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full">{staffUsers.length}</span>
+                </h2>
+                <div className="glass-card p-0 overflow-hidden border border-slate-200 dark:border-slate-800">
+                  <UserTable users={staffUsers} onAction={{ viewUser, flagViolation, toggleBlockUser, deleteUser, toggleChatAccess, toggleTownhallRestriction, editUserEmail }} />
                 </div>
               </div>
-              <p className="text-sm text-slate-700 dark:text-slate-300">{fb.message}</p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-            <div className="glass-card p-4">
-              <div className="text-2xl font-black text-blue-600">{stats.totalUsers}</div>
-              <div className="text-xs text-slate-500 uppercase">Total Users</div>
-            </div>
-            <div className="glass-card p-4">
-              <div className="text-2xl font-black text-green-600">{stats.totalRoutines}</div>
-              <div className="text-xs text-slate-500 uppercase">Total Routines</div>
-            </div>
-            <div className="glass-card p-4">
-              <div className="text-2xl font-black text-purple-600">{allUsers.filter(u => u.activeSession?.status === 'running').length}</div>
-              <div className="text-xs text-slate-500 uppercase">Live Now</div>
-            </div>
-            <div className="glass-card p-4">
-              <div className="text-2xl font-black text-red-600">{allUsers.filter(u => u.violation).length}</div>
-              <div className="text-xs text-slate-500 uppercase">Violations</div>
-            </div>
-          </div>
+            )}
 
-          <div className="bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-3xl p-6 mb-8 shadow-sm">
-             <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-cyan-500/10 text-cyan-500 rounded-xl"><Activity className="w-5 h-5" /></div>
-                <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-tight text-sm">Townhall Controls</h3>
-             </div>
-             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <button onClick={() => clearTownhallMessages('today')} className="px-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs font-bold hover:bg-slate-200 transition-all">Clear Today's Chat</button>
-                <button onClick={() => clearTownhallMessages('yesterday')} className="px-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs font-bold hover:bg-slate-200 transition-all">Clear Yesterday's Chat</button>
-                <button onClick={() => clearTownhallMessages('all')} className="px-4 py-3 bg-red-500 text-white rounded-2xl text-xs font-bold hover:bg-red-600 transition-all">Clear All History</button>
-             </div>
-          </div>
-
-          <div className="p-4 bg-amber-500/5 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center gap-3 mb-8">
-             <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-             <p className="text-[10px] sm:text-[11px] text-amber-600 dark:text-amber-500 font-bold uppercase tracking-tight">
-               Important: Deleting here only removes routines/data. To fully delete a user (allowing re-signup), you must remove them from the "Authentication" tab in Firebase Console.
-             </p>
-          </div>
-
-          {/* SECTION 1: STAFF */}
-          {staffUsers.length > 0 && (
-            <div className="mb-10">
+            {/* SECTION 2: USERS */}
+            <div>
               <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                 <Shield className="w-5 h-5 text-blue-500" /> Staff & Management
-                 <span className="text-[10px] bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full">{staffUsers.length}</span>
+                 <Users className="w-5 h-5 text-indigo-500" /> Regular Members
+                 <span className="text-[10px] bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full">{generalUsers.length}</span>
               </h2>
               <div className="glass-card p-0 overflow-hidden border border-slate-200 dark:border-slate-800">
-                <UserTable users={staffUsers} onAction={{ viewUser, flagViolation, toggleBlockUser, deleteUser, toggleChatAccess, toggleTownhallRestriction, editUserEmail }} />
+                <UserTable users={generalUsers} onAction={{ viewUser, flagViolation, toggleBlockUser, deleteUser, toggleChatAccess, toggleTownhallRestriction, editUserEmail }} />
               </div>
             </div>
-          )}
-
-          {/* SECTION 2: USERS */}
-          <div>
-            <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-               <Users className="w-5 h-5 text-indigo-500" /> Regular Members
-               <span className="text-[10px] bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full">{generalUsers.length}</span>
-            </h2>
-            <div className="glass-card p-0 overflow-hidden border border-slate-200 dark:border-slate-800">
-              <UserTable users={generalUsers} onAction={{ viewUser, flagViolation, toggleBlockUser, deleteUser, toggleChatAccess, toggleTownhallRestriction, editUserEmail }} />
-            </div>
+          </>
+        ) : activeTab === 'feedback' ? (
+          <div className="space-y-5">
+            {feedbacks.map(fb => (
+              <div key={fb.id} className="bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-2xl p-5 shadow-sm">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                     <div className="font-bold text-slate-900 dark:text-white">{fb.userName} <span className="text-blue-400 text-xs">@{fb.username}</span></div>
+                     <div className="text-xs text-slate-400">{new Date(fb.submittedAt).toLocaleDateString()}</div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                     {[...Array(5)].map((_, i) => <Star key={i} className={`w-4 h-4 ${i < fb.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'}`} />)}
+                  </div>
+                </div>
+                <p className="text-sm text-slate-700 dark:text-slate-300">{fb.message}</p>
+              </div>
+            ))}
+            {feedbacks.length === 0 && <div className="text-center py-20 text-slate-400 italic">No feedback received yet.</div>}
           </div>
-        </>
-      )}
+        ) : (
+          <div className="space-y-6">
+             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 mb-6 relative overflow-hidden">
+                <div className="relative z-10">
+                   <h2 className="text-2xl font-black text-white mb-2 flex items-center gap-3"><Lock className="w-6 h-6 text-blue-500" /> Active System Sessions</h2>
+                   <p className="text-slate-400 text-sm max-w-md italic">Below are all active logins for the administrator account. You can remotely terminate any session from here.</p>
+                </div>
+                <div className="absolute right-0 top-0 opacity-10"><Shield className="w-64 h-64 text-blue-500" /></div>
+             </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {adminSessions.map(sess => (
+                   <div key={sess.id} className={`p-6 rounded-3xl border transition-all ${sess.id === user.sessionId ? 'bg-blue-500/5 border-blue-500/30' : 'bg-white dark:bg-[#15171e] border-slate-200 dark:border-slate-800'}`}>
+                      <div className="flex justify-between items-start mb-4">
+                         <div className="flex items-center gap-3">
+                            <div className={`p-3 rounded-2xl ${sess.id === user.sessionId ? 'bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}><Clock className="w-5 h-5" /></div>
+                            <div>
+                               <div className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                                  Device Identifier 
+                                  {sess.id === user.sessionId && <span className="text-[8px] bg-blue-500 text-white px-2 py-0.5 rounded-full">CURRENT</span>}
+                               </div>
+                               <div className="text-[10px] text-slate-400 font-mono mt-0.5">{sess.id}</div>
+                            </div>
+                         </div>
+                         {sess.id !== user.sessionId && (
+                            <button onClick={() => terminateSession(sess.id)} disabled={terminating} className="p-2 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all">
+                               <Unlock className="w-5 h-5" />
+                            </button>
+                         )}
+                      </div>
+                      <div className="space-y-2">
+                         <div className="flex justify-between text-[10px] uppercase font-bold text-slate-500">
+                            <span>Last Active</span>
+                            <span className="text-slate-900 dark:text-white">{new Date(sess.lastActive).toLocaleString()}</span>
+                         </div>
+                         <div className="text-[10px] text-slate-400 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg line-clamp-1 italic">
+                            {sess.userAgent}
+                         </div>
+                      </div>
+                   </div>
+                ))}
+             </div>
+          </div>
+        )}
 
       {selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">

@@ -30,14 +30,27 @@ export default function Profile({ user, onUpdateProfile, setupMode }) {
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
+    
+    // 5MB Limit Check
+    if (file.size > 5 * 1024 * 1024) {
+       alert("Error: File is too large. Profile picture must be less than 5MB.")
+       return
+    }
+
     setUploading(true)
+    setError('')
     try {
-      const storageRef = ref(storage, `profile-photos/${user.uid}/${file.name}`)
+      const ext = file.name.split('.').pop()
+      const storageRef = ref(storage, `profile-photos/${user.uid}/${Date.now()}.${ext}`)
       await uploadBytes(storageRef, file)
       const downloadURL = await getDownloadURL(storageRef)
       setProfileData(prev => ({ ...prev, photo: downloadURL }))
+      // Auto-save the photo link to Firestore immediately for better UX
+      await onUpdateProfile({ ...profileData, photo: downloadURL })
+      setMessage('Photo updated successfully! ✅')
     } catch (err) {
       console.error('Photo upload failed', err)
+      setError('Photo upload failed. Please check your internet and try again.')
     } finally {
       setUploading(false)
     }
