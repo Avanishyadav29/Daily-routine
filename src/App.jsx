@@ -13,6 +13,7 @@ import Inbox from './pages/Inbox'
 import Badges from './pages/Badges'
 import Feedback from './pages/Feedback'
 import Announcements from './pages/Announcements'
+import Townhall from './pages/Townhall'
 import AdminLogin from './pages/AdminLogin'
 import Navbar from './components/Navbar'
 
@@ -138,6 +139,7 @@ function App() {
             <Route path="/leaderboard" element={user ? <Leaderboard user={user} /> : <Navigate to="/login" />} />
             <Route path="/inbox" element={user ? <Inbox user={user} /> : <Navigate to="/login" />} />
             <Route path="/announcements" element={user ? <Announcements user={user} /> : <Navigate to="/login" />} />
+            <Route path="/townhall" element={user ? <Townhall user={user} /> : <Navigate to="/login" />} />
             <Route path="/badges" element={user ? <Badges user={user} /> : <Navigate to="/login" />} />
             <Route path="/feedback" element={user ? <Feedback user={user} /> : <Navigate to="/login" />} />
             <Route path="/profile" element={user ? <Profile user={user} onUpdateProfile={handleUpdateProfile} /> : <Navigate to="/login" />} />

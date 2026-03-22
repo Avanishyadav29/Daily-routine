@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Users, Trash2, Shield, Activity, Ban, CheckCircle, Eye, Clock, X, AlertTriangle, MessageCircle, Star, MessageSquare, Edit2 } from 'lucide-react'
+import { Users, Trash2, Shield, Activity, Ban, CheckCircle, Eye, Clock, X, AlertTriangle, MessageCircle, Star, MessageSquare, Edit2, UserPlus, Lock, Unlock } from 'lucide-react'
+import { initializeApp } from 'firebase/app'
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth'
+import { setDoc } from 'firebase/firestore'
 import { Navigate } from 'react-router-dom'
 import { db } from '../firebase'
 import { collection, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore'
@@ -12,11 +15,13 @@ export default function Admin({ user }) {
   const [loadingSessions, setLoadingSessions] = useState(false)
   const [activeTab, setActiveTab] = useState('users') // 'users' | 'feedback'
   const [feedbacks, setFeedbacks] = useState([])
+  const [showCreateUser, setShowCreateUser] = useState(false)
+  const [newUserData, setNewUserData] = useState({ name: '', username: '', email: '', password: '' })
+  const [creatingUser, setCreatingUser] = useState(false)
 
   useEffect(() => {
     if (user?.email !== 'admin@daily.com') return
 
-    // Real-time users listener
     const unsub = onSnapshot(collection(db, 'users'), (usersSnap) => {
       const usersList = usersSnap.docs.map(doc => ({
         uid: doc.id,
@@ -24,20 +29,14 @@ export default function Admin({ user }) {
       }))
       setAllUsers(usersList)
       setStats(prev => ({ ...prev, totalUsers: usersSnap.size }))
-    }, (err) => {
-      console.error("Admin user list fetch error:", err)
-      alert("Permission denied. Ensure you are an Admin and Firebase Rules allow access.")
     })
     return () => unsub()
   }, [user])
 
-  // Aggregate stats separately (optimized)
   useEffect(() => {
     if (allUsers.length === 0) return
     const getGlobalStats = async () => {
       try {
-        const globalSessionsSnap = await getDocs(collection(db, 'globalSessions'))
-        // Optional: calculate total routines if needed, but for now let's keep it simple
         setStats(prev => ({ 
           ...prev, 
           totalRoutines: allUsers.reduce((acc, u) => acc + (u.routinesCount || 0), 0) 
@@ -47,7 +46,6 @@ export default function Admin({ user }) {
     getGlobalStats()
   }, [allUsers.length])
 
-  // Load feedbacks
   useEffect(() => {
     if (user?.email !== 'admin@daily.com') return
     const unsub = onSnapshot(collection(db, 'feedback'), (snap) => {
@@ -70,6 +68,10 @@ export default function Admin({ user }) {
     await updateDoc(doc(db, 'users', uid), { chatEnabled: !current })
   }
 
+  const toggleTownhallRestriction = async (uid, current) => {
+    await updateDoc(doc(db, 'users', uid), { isTownhallRestricted: !current })
+  }
+
   const editUserEmail = async (uid, currentEmail) => {
     const newEmail = window.prompt("Enter new email for user:", currentEmail)
     if (newEmail && newEmail !== currentEmail) {
@@ -87,9 +89,41 @@ export default function Admin({ user }) {
 
   const deleteUser = async (uid, email) => {
     if (!window.confirm(`Delete user ${email}?`)) return
-    const routinesSnap = await getDocs(collection(db, 'users', uid, 'routines'))
-    await Promise.all(routinesSnap.docs.map(d => deleteDoc(d.ref)))
     await deleteDoc(doc(db, 'users', uid))
+    const inboxSnap = await getDocs(collection(db, 'users', uid, 'inbox'))
+    for (const d of inboxSnap.docs) await deleteDoc(d.ref)
+  }
+
+  const handleCreateUser = async (e) => {
+    e.preventDefault()
+    if (!newUserData.email || !newUserData.password || !newUserData.name) return
+    setCreatingUser(true)
+    try {
+      const secondaryApp = initializeApp({
+        apiKey: "AIzaSyASupKbTu4bzFfVjUun2yd1C9zluk0CJV0",
+        authDomain: "daily-routine-app-cb077.firebaseapp.com",
+        projectId: "daily-routine-app-cb077",
+        storageBucket: "daily-routine-app-cb077.firebasestorage.app",
+        messagingSenderId: "523385315207",
+        appId: "1:523385315207:web:9b34e29624924f5b01bd22",
+      }, "SecondaryAppInstance")
+      const secondaryAuth = getAuth(secondaryApp)
+      const cred = await createUserWithEmailAndPassword(secondaryAuth, newUserData.email, newUserData.password)
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        name: newUserData.name,
+        username: newUserData.username.replace('@', '').toLowerCase().trim(),
+        email: newUserData.email,
+        role: 'user',
+        createdAt: new Date().toISOString()
+      })
+      alert("User created successfully!")
+      setShowCreateUser(false)
+      setNewUserData({ name: '', username: '', email: '', password: '' })
+    } catch (err) {
+      alert("Error: " + err.message)
+    } finally {
+      setCreatingUser(false)
+    }
   }
 
   const viewUser = async (u) => {
@@ -103,305 +137,138 @@ export default function Admin({ user }) {
 
   const formatTime = (secs) => {
     if (!secs) return '0m'
-    const h = Math.floor(secs / 3600)
-    const m = Math.floor((secs % 3600) / 60)
+    const h = Math.floor(secs / 3600); const m = Math.floor((secs % 3600) / 60)
     if (h > 0) return `${h}h ${m}m`
     return `${m}m`
   }
 
   return (
-    <div className="max-w-5xl mx-auto animate-fade-in pb-10">
-      <div className="flex items-center gap-4 mb-8">
-        <div className="p-3 bg-gradient-to-tr from-blue-500 to-indigo-500 text-white rounded-2xl shadow-lg">
-          <Shield className="w-8 h-8" />
+    <div className="max-w-6xl mx-auto animate-fade-in pb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-2xl shadow-xl shadow-blue-500/20">
+            <Shield className="w-8 h-8" />
+          </div>
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Admin Dashboard</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Platform Administration</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Admin Dashboard</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Full control over the platform</p>
-        </div>
+        <button onClick={() => setShowCreateUser(true)} className="btn-primary bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 rounded-2xl shadow-lg text-sm font-bold flex items-center justify-center gap-2">
+          <UserPlus className="w-5 h-5" /> Create New User
+        </button>
       </div>
 
-      {/* Tab Switcher */}
       <div className="flex gap-2 mb-8 bg-slate-100 dark:bg-slate-800/40 p-1 rounded-xl w-fit">
-        <button onClick={() => setActiveTab('users')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === 'users' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
-          <Users className="w-4 h-4" /> Users
-        </button>
-        <button onClick={() => setActiveTab('feedback')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === 'feedback' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
-          <MessageCircle className="w-4 h-4" /> Feedback <span className="ml-1 text-xs bg-pink-500 text-white px-1.5 py-0.5 rounded-full">{feedbacks.length}</span>
-        </button>
+        <button onClick={() => setActiveTab('users')} className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === 'users' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}>Users</button>
+        <button onClick={() => setActiveTab('feedback')} className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === 'feedback' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}>Feedback ({feedbacks.length})</button>
       </div>
 
-      {/* FEEDBACK TAB */}
-      {activeTab === 'feedback' && (
+      {activeTab === 'feedback' ? (
         <div className="space-y-5">
-          {feedbacks.length === 0 ? (
-            <div className="text-center py-16 text-slate-500 dark:text-slate-400">
-              <MessageCircle className="w-12 h-12 mx-auto opacity-20 mb-3" />
-              <p>No feedback submitted yet.</p>
-            </div>
-          ) : feedbacks.map(fb => (
-            <div key={fb.id} className="bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-2xl p-5 shadow-sm hover:-translate-y-0.5 transition-transform">
-              <div className="flex items-start justify-between gap-3 mb-3">
+          {feedbacks.map(fb => (
+            <div key={fb.id} className="bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-2xl p-5 shadow-sm">
+              <div className="flex justify-between items-start mb-3">
                 <div>
-                  <div className="font-bold text-slate-900 dark:text-white">{fb.userName} {fb.username && <span className="text-blue-400 text-xs font-medium">@{fb.username}</span>}</div>
-                  <div className="text-xs text-slate-400 mt-0.5">{fb.userEmail} · {new Date(fb.submittedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                   <div className="font-bold text-slate-900 dark:text-white">{fb.userName} <span className="text-blue-400 text-xs">@{fb.username}</span></div>
+                   <div className="text-xs text-slate-400">{new Date(fb.submittedAt).toLocaleDateString()}</div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  {[1,2,3,4,5].map(n => <Star key={n} className={`w-4 h-4 ${n <= fb.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300 dark:text-slate-600'}`} />)}
+                <div className="flex items-center gap-1">
+                   {[...Array(5)].map((_, i) => <Star key={i} className={`w-4 h-4 ${i < fb.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'}`} />)}
                 </div>
               </div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">{fb.category}</span>
-              </div>
-              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{fb.message}</p>
-              {fb.fileUrl && fb.fileType === 'image' && (
-                <img src={fb.fileUrl} alt="attachment" className="mt-3 rounded-xl max-h-48 object-cover cursor-pointer" onClick={() => window.open(fb.fileUrl, '_blank')} />
-              )}
-              {fb.fileUrl && fb.fileType === 'file' && (
-                <a href={fb.fileUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 text-xs text-blue-400 underline">
-                  📎 {fb.fileName}
-                </a>
-              )}
+              <p className="text-sm text-slate-700 dark:text-slate-300">{fb.message}</p>
             </div>
           ))}
         </div>
-      )}
-
-      {/* USERS TAB */}
-      {activeTab === 'users' && (
-      <>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
-          {[
-          { label: 'Total Users', value: stats.totalUsers, icon: <Users className="w-8 h-8" />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-500/10' },
-          { label: 'Total Routines', value: stats.totalRoutines, icon: <Activity className="w-8 h-8" />, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-500/10' },
-          { label: 'Live Now', value: allUsers.filter(u => u.activeSession?.status === 'running').length, icon: <Clock className="w-8 h-8" />, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-500/10' },
-          { label: 'Violations', value: allUsers.filter(u => u.violation).length, icon: <AlertTriangle className="w-8 h-8" />, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-500/10' },
-        ].map(s => (
-          <div key={s.label} className="glass-card p-4 flex items-center gap-4 hover:-translate-y-1 transition-transform">
-            <div className={`p-3 ${s.bg} rounded-xl ${s.color}`}>{s.icon}</div>
-            <div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">{s.value}</div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">{s.label}</div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
+            <div className="glass-card p-4">
+              <div className="text-2xl font-black text-blue-600">{stats.totalUsers}</div>
+              <div className="text-xs text-slate-500 uppercase">Total Users</div>
+            </div>
+            <div className="glass-card p-4">
+              <div className="text-2xl font-black text-green-600">{stats.totalRoutines}</div>
+              <div className="text-xs text-slate-500 uppercase">Total Routines</div>
+            </div>
+            <div className="glass-card p-4">
+              <div className="text-2xl font-black text-purple-600">{allUsers.filter(u => u.activeSession?.status === 'running').length}</div>
+              <div className="text-xs text-slate-500 uppercase">Live Now</div>
+            </div>
+            <div className="glass-card p-4">
+              <div className="text-2xl font-black text-red-600">{allUsers.filter(u => u.violation).length}</div>
+              <div className="text-xs text-slate-500 uppercase">Violations</div>
             </div>
           </div>
-        ))}
-      </div>
 
-      {/* Users Table */}
-      <div className="glass-card p-0 overflow-hidden border border-slate-300 dark:border-slate-700/50">
-        <div className="p-6 border-b border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/30 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Registered Users</h2>
-          <span className="text-sm text-slate-500 dark:text-slate-400">Click on 👁️ to inspect any user</span>
-        </div>
-        <div className="overflow-x-auto">
-          {allUsers.length === 0 ? (
-            <p className="text-slate-500 dark:text-slate-400 text-center p-12">No users found.</p>
-          ) : (
-            <table className="w-full text-left border-collapse whitespace-nowrap">
-              <thead>
-                <tr className="bg-slate-100 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
-                  <th className="px-6 py-4 font-semibold">Name</th>
-                  <th className="px-6 py-4 font-semibold">Email</th>
-                  <th className="px-6 py-4 font-semibold">Role</th>
-                  <th className="px-6 py-4 font-semibold">Status</th>
-                  <th className="px-6 py-4 font-semibold text-center">Chat</th>
-                  <th className="px-6 py-4 font-semibold text-center">Live Activity</th>
-                  <th className="px-6 py-4 font-semibold text-center">Today Focus</th>
-                  <th className="px-6 py-4 font-semibold text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-700/50">
-                {allUsers.map((u) => (
-                  <tr key={u.uid} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
-                    <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">
-                      <div className="flex items-center gap-3">
-                        {u.photo ? (
-                          <img src={u.photo} alt={u.name} className="w-8 h-8 rounded-full object-cover border border-slate-300 dark:border-slate-600" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
-                            {u.name?.charAt(0)?.toUpperCase()}
-                          </div>
-                        )}
-                        <div>
-                          <div className="font-semibold flex items-center gap-1.5">
-                            {u.name}
-                            {u.violation && <AlertTriangle className="w-4 h-4 text-red-500" title="Violation flagged" />}
-                          </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            {u.username ? <span className="font-medium text-blue-500">@{u.username}</span> : null}
-                            {u.username && u.mobile ? ' · ' : ''}
-                            {u.mobile}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 group">
-                        <span className="text-slate-600 dark:text-slate-400 text-sm">{u.email}</span>
-                        {u.uid !== user?.uid && (
-                          <button onClick={() => editUserEmail(u.uid, u.email)} className="p-1 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {u.email === 'admin@daily.com' || u.role === 'admin' ? (
-                        <span className="px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 rounded-full text-xs font-bold uppercase tracking-widest border border-blue-200 dark:border-blue-500/30">Admin</span>
-                      ) : (
-                        <select 
-                          value={u.role || 'user'} 
-                          onChange={(e) => changeRole(u.uid, e.target.value)}
-                          className="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-xs font-semibold px-2 py-1 cursor-pointer focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="user">User</option>
-                          <option value="moderator">Moderator</option>
-                          <option value="coordinator">Coordinator</option>
-                        </select>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      {u.isBlocked ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Blocked
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-500/20">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Active
-                        </span>
-                      )}
-                    </td>
-                    {/* Chat toggle */}
-                    <td className="px-6 py-4 text-center">
-                      {u.uid !== user?.uid && (
-                        <button onClick={() => toggleChatAccess(u.uid, u.chatEnabled)}
-                          title={u.chatEnabled ? 'Revoke Chat' : 'Allow Chat'}
-                          className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${u.chatEnabled ? 'bg-green-500/10 text-green-500 border-green-500/30 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30' : 'bg-slate-700/30 text-slate-500 border-slate-600/30 hover:bg-green-500/10 hover:text-green-400 hover:border-green-500/30'}`}>
-                          {u.chatEnabled ? '✓ Allowed' : '🔒 Off'}
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      {u.activeSession && u.activeSession.status === 'running' ? (
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-semibold animate-pulse">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> LIVE
-                          </span>
-                          <span className="text-xs text-slate-500 dark:text-slate-400 max-w-[120px] truncate">{u.activeSession.taskTitle}</span>
-                          <span className="text-xs text-blue-500">{u.activeSession.mode?.replace('_', ' ')}</span>
-                        </div>
-                      ) : (
-                        <span className="text-slate-400 text-sm">—</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-center font-bold text-blue-600 dark:text-blue-400">
-                      {formatTime(u.todayFocusHours)}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      {u.uid !== user?.uid && (
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button onClick={() => viewUser(u)} className="p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-400/10 rounded-xl transition-all" title="Inspect User">
-                            <Eye className="w-5 h-5" />
-                          </button>
-                          <button onClick={() => flagViolation(u.uid, u.violation)} className={`p-2 rounded-xl transition-all ${u.violation ? 'text-orange-500 bg-orange-100 dark:bg-orange-400/10' : 'text-slate-500 hover:bg-orange-100 dark:hover:bg-orange-400/10 hover:text-orange-500'}`} title={u.violation ? 'Remove Violation' : 'Flag Violation'}>
-                            <AlertTriangle className="w-5 h-5" />
-                          </button>
-                          <button onClick={() => toggleBlockUser(u.uid, u.isBlocked)} className={`p-2 rounded-xl transition-all ${u.isBlocked ? 'text-green-600 hover:bg-green-100 dark:hover:bg-green-400/10' : 'text-orange-500 hover:bg-orange-100 dark:hover:bg-orange-400/10'}`} title={u.isBlocked ? 'Unblock' : 'Block'}>
-                            {u.isBlocked ? <CheckCircle className="w-5 h-5" /> : <Ban className="w-5 h-5" />}
-                          </button>
-                          <button onClick={() => deleteUser(u.uid, u.email)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-500/10 rounded-xl transition-all" title="Delete">
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </div>
-                      )}
-                    </td>
+          <div className="glass-card p-0 overflow-hidden border border-slate-200 dark:border-slate-800">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse whitespace-nowrap">
+                <thead className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="px-6 py-4">User</th>
+                    <th className="px-6 py-4 text-center">Control</th>
+                    <th className="px-6 py-4 text-center">Status</th>
+                    <th className="px-6 py-4 text-center">Activity</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {allUsers.map(u => (
+                    <tr key={u.uid} className="hover:bg-slate-50 dark:hover:bg-white/[0.01]">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-xs">{u.name?.charAt(0)}</div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-900 dark:text-white">{u.name}</div>
+                            <div className="text-[10px] text-slate-400 group flex items-center gap-1">
+                              {u.email} <button onClick={() => editUserEmail(u.uid, u.email)} className="opacity-0 group-hover:opacity-100"><Edit2 className="w-2.5 h-2.5" /></button>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex flex-col gap-1 items-center scale-75">
+                          <button onClick={() => toggleChatAccess(u.uid, u.chatEnabled)} className={`px-3 py-1 rounded-full border ${u.chatEnabled ? 'text-green-500 border-green-500/30' : 'text-slate-400'}`}>Chat: {u.chatEnabled ? 'On' : 'Off'}</button>
+                          <button onClick={() => toggleTownhallRestriction(u.uid, u.isTownhallRestricted)} className={`px-3 py-1 rounded-full border ${!u.isTownhallRestricted ? 'text-blue-500 border-blue-500/30' : 'text-orange-400'}`}>TH: {!u.isTownhallRestricted ? 'Open' : 'Restricted'}</button>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${u.isBlocked ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>{u.isBlocked ? 'BLOCKED' : 'ACTIVE'}</span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="text-xs font-bold text-blue-500">{formatTime(u.todayFocusHours)}</div>
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-1">
+                        <button onClick={() => viewUser(u)} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-lg"><Eye className="w-4 h-4" /></button>
+                        <button onClick={() => flagViolation(u.uid, u.violation)} className={`p-1.5 rounded-lg ${u.violation ? 'text-orange-500 bg-orange-100' : 'text-slate-400'}`}><AlertTriangle className="w-4 h-4" /></button>
+                        <button onClick={() => toggleBlockUser(u.uid, u.isBlocked)} className={`p-1.5 rounded-lg ${u.isBlocked ? 'text-green-500' : 'text-red-400'}`}>{u.isBlocked ? <CheckCircle className="w-4 h-4" /> : <Ban className="w-4 h-4" />}</button>
+                        <button onClick={() => deleteUser(u.uid, u.email)} className="p-1.5 text-red-500 hover:bg-red-100 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
 
-      {/* User Detail Modal */}
       {selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-200 dark:border-slate-700">
-            <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900 z-10">
-              <div className="flex items-center gap-3">
-                {selectedUser.photo ? (
-                  <img src={selectedUser.photo} className="w-12 h-12 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700" alt="" />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xl">
-                    {selectedUser.name?.charAt(0)}
-                  </div>
-                )}
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    {selectedUser.name}
-                    {selectedUser.username && <span className="text-sm font-medium text-blue-500 bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 rounded-full">@{selectedUser.username}</span>}
-                  </h2>
-                  <p className="text-sm text-slate-500">{selectedUser.email} · {selectedUser.mobile || 'No mobile'}</p>
-                </div>
-              </div>
-              <button onClick={() => setSelectedUser(null)} className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-100 dark:hover:bg-red-500/10 rounded-full transition-colors">
-                <X className="w-6 h-6" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg overflow-hidden">
+            <div className="p-6 border-b flex justify-between items-center">
+              <h2 className="font-black text-xl">{selectedUser.name}</h2>
+              <button onClick={() => setSelectedUser(null)}><X /></button>
             </div>
-
-            {/* Current Activity */}
-            <div className="p-6 border-b border-slate-200 dark:border-slate-700">
-              <h3 className="font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                <Clock className="w-5 h-5" /> Current Activity
-              </h3>
-              {selectedUser.activeSession ? (
-                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700/40 p-4 rounded-2xl">
-                  <div className="flex items-center gap-2 text-green-700 dark:text-green-400 font-semibold mb-2">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    LIVE SESSION
-                  </div>
-                  <p className="text-slate-800 dark:text-slate-200"><span className="font-semibold">Task:</span> {selectedUser.activeSession.taskTitle}</p>
-                  <p className="text-slate-700 dark:text-slate-300"><span className="font-semibold">Mode:</span> {selectedUser.activeSession.mode?.replace('_', ' ')}</p>
-                  <p className="text-slate-700 dark:text-slate-300"><span className="font-semibold">Started:</span> {new Date(selectedUser.activeSession.startedAt).toLocaleTimeString('en-IN')}</p>
-                  <p className="text-slate-700 dark:text-slate-300"><span className="font-semibold">Status:</span> {selectedUser.activeSession.status}</p>
-                </div>
-              ) : (
-                <p className="text-slate-500 dark:text-slate-400 text-sm bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl">User is not in an active session.</p>
-              )}
-
-              {selectedUser.violation && (
-                <div className="mt-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/40 p-4 rounded-2xl flex items-center gap-3">
-                  <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
-                  <p className="text-red-700 dark:text-red-400 font-semibold text-sm">⚠️ This user has a violation flagged by admin.</p>
-                </div>
-              )}
-            </div>
-
-            {/* Session History */}
-            <div className="p-6">
-              <h3 className="font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                <Activity className="w-5 h-5" /> Session History
-              </h3>
-              {loadingSessions ? (
-                <div className="flex justify-center p-8">
-                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                </div>
-              ) : userSessions.length === 0 ? (
-                <p className="text-slate-500 dark:text-slate-400 text-sm text-center py-6">No sessions recorded yet.</p>
-              ) : (
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
+              {loadingSessions ? <p className="text-center py-10 animate-pulse">Loading sessions...</p> : (
                 <div className="space-y-3">
                   {userSessions.map((s, i) => (
-                    <div key={i} className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl flex justify-between items-center">
-                      <div>
-                        <div className="font-semibold text-slate-900 dark:text-white text-sm">{s.taskTitle}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                          {new Date(s.startedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {new Date(s.startedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold text-blue-600 dark:text-blue-400">{formatTime(s.duration)}</div>
-                        <div className={`text-xs ${s.mode === 'BREAK' ? 'text-green-500' : 'text-purple-500'}`}>{s.mode?.replace('_', ' ')}</div>
-                      </div>
+                    <div key={i} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl flex justify-between items-center text-sm">
+                      <div>{s.taskTitle} <div className="text-[10px] text-slate-400">{new Date(s.startedAt).toLocaleString()}</div></div>
+                      <div className="font-bold text-blue-500">{formatTime(s.duration)}</div>
                     </div>
                   ))}
                 </div>
@@ -410,7 +277,25 @@ export default function Admin({ user }) {
           </div>
         </div>
       )}
-      </>
+
+      {showCreateUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="bg-white dark:bg-[#0d0f14] w-full max-w-sm rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3"><UserPlus className="text-blue-500" /> New User</h2>
+              <button onClick={() => setShowCreateUser(false)} className="text-slate-400 hover:text-red-500"><X /></button>
+            </div>
+            <form onSubmit={handleCreateUser} className="p-8 space-y-5">
+              <input required className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 text-sm" placeholder="Full Name" value={newUserData.name} onChange={e => setNewUserData({...newUserData, name: e.target.value})} />
+              <input className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 text-sm" placeholder="Username" value={newUserData.username} onChange={e => setNewUserData({...newUserData, username: e.target.value})} />
+              <input required type="email" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 text-sm" placeholder="Email" value={newUserData.email} onChange={e => setNewUserData({...newUserData, email: e.target.value})} />
+              <input required type="password" minLength={6} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 text-sm" placeholder="Password" value={newUserData.password} onChange={e => setNewUserData({...newUserData, password: e.target.value})} />
+              <button type="submit" disabled={creatingUser} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black transition-all shadow-xl shadow-blue-500/20 disabled:opacity-50">
+                {creatingUser ? 'Creating...' : 'Create Account'}
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
-import { Camera, Save, User, AtSign } from 'lucide-react'
+import { Camera, Save, User, AtSign, Trash2, Key, AlertCircle } from 'lucide-react'
 import { auth, storage, db } from '../firebase'
+import { EmailAuthProvider, reauthenticateWithCredential, deleteUser as deleteAuthUser } from 'firebase/auth'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { updatePassword } from 'firebase/auth'
@@ -21,6 +22,8 @@ export default function Profile({ user, onUpdateProfile }) {
   const [passMessage, setPassMessage] = useState('')
   const [passError, setPassError] = useState('')
   const [savingPass, setSavingPass] = useState(false)
+  const [passwordForDelete, setPasswordForDelete] = useState('')
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   
   const fileInputRef = useRef(null)
 
@@ -108,6 +111,38 @@ export default function Profile({ user, onUpdateProfile }) {
       }
     } finally {
       setSavingPass(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (user.email === 'admin@daily.com') {
+      alert("Admin account cannot be deleted.")
+      return
+    }
+    if (!passwordForDelete) {
+      alert("Please enter your current password to confirm.")
+      return
+    }
+    if (!window.confirm("Are you ABSOLUTELY sure? This will permanently delete your routines, focus history, and account data. ⚠️")) {
+      return
+    }
+
+    try {
+      const credential = EmailAuthProvider.credential(user.email, passwordForDelete)
+      await reauthenticateWithCredential(auth.currentUser, credential)
+      
+      // Delete from Firestore
+      const snap = await getDocs(collection(db, 'users', user.uid, 'routines'))
+      for (const d of snap.docs) await deleteDoc(d.ref)
+      await deleteDoc(doc(db, 'users', user.uid))
+
+      // Delete Auth account
+      await deleteAuthUser(auth.currentUser)
+      alert("Account deleted successfully.")
+      window.location.reload()
+    } catch (err) {
+      console.error(err)
+      alert("Error: " + (err.code === 'auth/wrong-password' ? 'Incorrect password.' : 'Verification failed.'))
     }
   }
 
@@ -264,6 +299,52 @@ export default function Profile({ user, onUpdateProfile }) {
             </button>
           </div>
         </form>
+
+        {/* Delete Account Section */}
+        {user.email !== 'admin@daily.com' && (
+          <div className="mt-8 pt-8 border-t border-red-500/20">
+            <h3 className="text-red-500 font-bold mb-4 flex items-center gap-2">
+              <Trash2 className="w-5 h-5" /> Danger Zone
+            </h3>
+            <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 font-medium">
+                Deleting your account is permanent and cannot be undone. All your routine history and focus data will be lost forever.
+              </p>
+              
+              {!deleteConfirmOpen ? (
+                <button 
+                  onClick={() => setDeleteConfirmOpen(true)}
+                  className="px-6 py-3 bg-red-500/10 text-red-500 font-bold rounded-xl border border-red-500/30 hover:bg-red-500 hover:text-white transition-all text-sm uppercase tracking-wide"
+                >
+                  Delete My Account
+                </button>
+              ) : (
+                <div className="space-y-4 animate-slide-up-fade">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-black text-red-400 uppercase tracking-widest flex items-center gap-2">
+                      <Key className="w-3.5 h-3.5" /> Re-enter Password for Confirmation
+                    </label>
+                    <input 
+                      type="password"
+                      className="w-full bg-white dark:bg-slate-900 border border-red-500/30 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-500/50"
+                      placeholder="Current Password"
+                      value={passwordForDelete}
+                      onChange={e => setPasswordForDelete(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={handleDeleteAccount} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 text-sm">
+                      Confirm Permanent Delete
+                    </button>
+                    <button onClick={() => {setDeleteConfirmOpen(false); setPasswordForDelete('')}} className="px-6 py-3 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-xl text-sm">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react'
 import { MessageSquare, Send, CheckCheck, Paperclip, X, Lock } from 'lucide-react'
 import { db, storage } from '../firebase'
 import {
-  collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, getDoc
+  collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, getDoc, deleteDoc
 } from 'firebase/firestore'
+import { Trash2 } from 'lucide-react'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
 export default function Inbox({ user }) {
@@ -102,6 +103,14 @@ export default function Inbox({ user }) {
     setText('')
     setAttachment(null)
     if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const handleDeleteMessage = async (msgId) => {
+    if (!isAdmin) return
+    if (!window.confirm("Delete this message?")) return
+    const targetUid = selectedUser?.uid
+    if (!targetUid) return
+    await deleteDoc(doc(db, 'users', targetUid, 'inbox', msgId))
   }
 
   const toggleChatAccess = async (uid, current) => {
@@ -217,6 +226,11 @@ export default function Inbox({ user }) {
                     <div className={`flex items-center gap-1 mt-1 ${isMe ? 'justify-end mr-1' : 'ml-1'}`}>
                       <span className="text-xs text-slate-400">{formatDate(msg.createdAt)}</span>
                       {isMe && isAdmin && msg.read && <CheckCheck className="w-3 h-3 text-blue-400" />}
+                      {isAdmin && (
+                        <button onClick={() => handleDeleteMessage(msg.id)} className="ml-2 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
