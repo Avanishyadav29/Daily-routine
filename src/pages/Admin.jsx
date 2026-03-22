@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Users, Trash2, Shield, Activity, Ban, CheckCircle, Eye, Clock, X, AlertTriangle, MessageCircle, Star, MessageSquare } from 'lucide-react'
+import { Users, Trash2, Shield, Activity, Ban, CheckCircle, Eye, Clock, X, AlertTriangle, MessageCircle, Star, MessageSquare, Edit2 } from 'lucide-react'
 import { Navigate } from 'react-router-dom'
 import { db } from '../firebase'
 import { collection, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore'
@@ -68,6 +68,16 @@ export default function Admin({ user }) {
 
   const toggleChatAccess = async (uid, current) => {
     await updateDoc(doc(db, 'users', uid), { chatEnabled: !current })
+  }
+
+  const editUserEmail = async (uid, currentEmail) => {
+    const newEmail = window.prompt("Enter new email for user:", currentEmail)
+    if (newEmail && newEmail !== currentEmail) {
+      try {
+        await updateDoc(doc(db, 'users', uid), { email: newEmail })
+        setAllUsers(prev => prev.map(u => u.uid === uid ? { ...u, email: newEmail } : u))
+      } catch (err) { alert("Failed to update email.") }
+    }
   }
 
   const flagViolation = async (uid, current) => {
@@ -225,7 +235,16 @@ export default function Admin({ user }) {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm">{u.email}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 group">
+                        <span className="text-slate-600 dark:text-slate-400 text-sm">{u.email}</span>
+                        {u.uid !== user?.uid && (
+                          <button onClick={() => editUserEmail(u.uid, u.email)} className="p-1 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4">
                       {u.email === 'admin@daily.com' || u.role === 'admin' ? (
                         <span className="px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 rounded-full text-xs font-bold uppercase tracking-widest border border-blue-200 dark:border-blue-500/30">Admin</span>

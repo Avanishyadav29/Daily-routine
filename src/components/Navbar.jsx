@@ -2,7 +2,7 @@ import React from 'react'
 import { LogOut, Sun, Moon, Shield, User, Timer, Trophy, MessageSquare, Medal, LayoutDashboard, MessageCircle, Megaphone } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
-export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
+export default function Navbar({ user, onLogout, isDarkMode, toggleTheme, unreadCounts }) {
   const location = useLocation()
   const isActive = (path) => location.pathname === path
 
@@ -13,8 +13,8 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
     { to: '/timer', icon: <Timer className="w-5 h-5" />, label: 'Timer' },
     { to: '/leaderboard', icon: <Trophy className="w-5 h-5" />, label: 'Board' },
     { to: '/badges', icon: <Medal className="w-5 h-5" />, label: 'Badges' },
-    { to: '/inbox', icon: <MessageSquare className="w-5 h-5" />, label: 'Inbox' },
-    { to: '/announcements', icon: <Megaphone className="w-5 h-5" />, label: 'Announcements' },
+    { to: '/inbox', icon: <MessageSquare className="w-5 h-5" />, label: 'Inbox', badge: unreadCounts?.inbox },
+    { to: '/announcements', icon: <Megaphone className="w-5 h-5" />, label: 'Announcements', badge: unreadCounts?.announcements },
     ...(user.email !== 'admin@daily.com' 
       ? [{ to: '/feedback', icon: <MessageCircle className="w-5 h-5" />, label: 'Feedback' }] 
       : [{ to: '/admin', icon: <Shield className="w-5 h-5" />, label: 'Admin Dashboard' }]
@@ -58,10 +58,15 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/50'
               }`}
             >
-              <div className={`${isActive(link.to) ? 'text-white' : 'text-slate-400 group-hover:text-blue-500'} transition-colors`}>
+              <div className={`${isActive(link.to) ? 'text-white' : 'text-slate-400 group-hover:text-blue-500'} transition-colors relative`}>
                 {link.icon}
+                {link.badge > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full animate-bounce shadow-sm">
+                    {link.badge}
+                  </span>
+                )}
               </div>
-              <span className="tracking-wide">{link.label}</span>
+              <span className="tracking-wide flex-1">{link.label}</span>
             </Link>
           ))}
         </div>
@@ -133,11 +138,16 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
         <div className="flex justify-around items-center px-2 py-2">
           {navLinks.slice(0, 5).map(link => (
             <Link key={link.to} to={link.to} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${isActive(link.to) ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>
-              <div className={`${isActive(link.to) ? 'bg-blue-50 dark:bg-blue-500/10 p-1.5 rounded-lg' : 'p-1.5'}`}>
-                {link.icon}
-              </div>
-              <span className="text-[10px] sm:text-xs font-semibold mt-1">{link.label}</span>
-            </Link>
+                <div className="relative">
+                  {link.icon}
+                  {link.badge > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full animate-bounce font-bold shadow-sm">
+                      {link.badge}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] font-bold mt-1 uppercase tracking-tighter">{link.label}</span>
+              </Link>
           ))}
         </div>
       </div>

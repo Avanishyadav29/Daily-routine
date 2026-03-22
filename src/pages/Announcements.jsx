@@ -24,6 +24,8 @@ export default function Announcements({ user }) {
     const unsub = onSnapshot(q, (snap) => {
       setAnnouncements(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       setLoading(false)
+      // Save last seen time to clear badge
+      localStorage.setItem('last_announcement_check', new Date().toISOString())
     })
     return () => unsub()
   }, [])

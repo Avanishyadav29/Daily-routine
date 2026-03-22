@@ -20,6 +20,7 @@ function App() {
   const [user, setUser] = useState(null)
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [loading, setLoading] = useState(true)
+  const [unreadCounts, setUnreadCounts] = useState({ inbox: 0, announcements: 0 })
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -41,13 +42,28 @@ function App() {
         const unsubUser = onSnapshot(userRef, (snap) => {
           const data = snap.data() || {}
           if (data.isBlocked) { signOut(auth); setUser(null); setLoading(false); return }
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: data.name || firebaseUser.displayName || (firebaseUser.email === 'admin@daily.com' ? 'Admin' : 'User'), username: data.username || (firebaseUser.email === 'admin@daily.com' ? 'admin' : ''), photo: data.photo || null, mobile: data.mobile || '', violation: data.violation || false, role: firebaseUser.email === 'admin@daily.com' ? 'admin' : (data.role || 'user') })
+          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: data.name || firebaseUser.displayName || (firebaseUser.email === 'admin@daily.com' ? 'Admin' : 'User'), username: data.username || (firebaseUser.email === 'admin@daily.com' ? 'admin' : ''), photo: data.photo || null, mobile: data.mobile || '', violation: data.violation || false, role: firebaseUser.email === 'admin@daily.com' ? 'admin' : (data.role || 'user'), lastSeenAnnouncement: data.lastSeenAnnouncement || '' })
           setLoading(false)
         }, (err) => {
           console.error("Error fetching user profile:", err)
           setLoading(false)
         })
-        return () => unsubUser()
+
+        // Unread Inbox listener
+        const unsubInbox = onSnapshot(collection(db, 'users', firebaseUser.uid, 'inbox'), (snap) => {
+          const unread = snap.docs.filter(d => !d.data().read && d.data().from !== 'me' && d.data().from !== firebaseUser.uid).length
+          setUnreadCounts(prev => ({ ...prev, inbox: unread }))
+        })
+
+        // Announcements listener for badge
+        const unsubAnn = onSnapshot(collection(db, 'announcements'), (snap) => {
+          // We'll compare with a local storage timestamp for real simplicity across refreshes
+          const lastChecked = localStorage.getItem('last_announcement_check') || new Date(0).toISOString()
+          const novel = snap.docs.filter(d => d.data().createdAt > lastChecked && d.data().fromUid !== firebaseUser.uid).length
+          setUnreadCounts(prev => ({ ...prev, announcements: novel }))
+        })
+
+        return () => { unsubUser(); unsubInbox(); unsubAnn() }
       } else {
         setUser(null); setLoading(false)
       }
@@ -90,7 +106,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0d0f14] text-slate-900 dark:text-slate-100 transition-colors duration-300 flex flex-col md:flex-row">
-      <Navbar user={user} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+      <Navbar user={user} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} unreadCounts={unreadCounts} />
       
       <main className="flex-1 w-full md:pl-64 pb-20 md:pb-0 min-h-screen flex flex-col">
         {/* Username missing banner */}
