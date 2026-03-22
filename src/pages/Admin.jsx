@@ -237,11 +237,13 @@ export default function Admin({ user }) {
                     </td>
                     {/* Chat toggle */}
                     <td className="px-6 py-4 text-center">
-                      <button onClick={() => toggleChatAccess(u.uid, u.chatEnabled)}
-                        title={u.chatEnabled ? 'Revoke Chat' : 'Allow Chat'}
-                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${u.chatEnabled ? 'bg-green-500/10 text-green-500 border-green-500/30 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30' : 'bg-slate-700/30 text-slate-500 border-slate-600/30 hover:bg-green-500/10 hover:text-green-400 hover:border-green-500/30'}`}>
-                        {u.chatEnabled ? '✓ Allowed' : '🔒 Off'}
-                      </button>
+                      {u.uid !== user?.uid && (
+                        <button onClick={() => toggleChatAccess(u.uid, u.chatEnabled)}
+                          title={u.chatEnabled ? 'Revoke Chat' : 'Allow Chat'}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${u.chatEnabled ? 'bg-green-500/10 text-green-500 border-green-500/30 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30' : 'bg-slate-700/30 text-slate-500 border-slate-600/30 hover:bg-green-500/10 hover:text-green-400 hover:border-green-500/30'}`}>
+                          {u.chatEnabled ? '✓ Allowed' : '🔒 Off'}
+                        </button>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-center">
                       {u.activeSession ? (
@@ -260,7 +262,7 @@ export default function Admin({ user }) {
                       {formatTime(u.todayFocusHours)}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {u.email !== 'admin@daily.com' && (
+                      {u.uid !== user?.uid && (
                         <div className="flex items-center justify-end gap-1.5">
                           <button onClick={() => viewUser(u)} className="p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-400/10 rounded-xl transition-all" title="Inspect User">
                             <Eye className="w-5 h-5" />
