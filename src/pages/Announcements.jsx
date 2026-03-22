@@ -4,7 +4,7 @@ import { db, storage } from '../firebase'
 import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
-export default function Announcements({ user }) {
+export default function Announcements({ user, clearBadge }) {
   const [announcements, setAnnouncements] = useState([])
   const [text, setText] = useState('')
   const [attachment, setAttachment] = useState(null)
@@ -25,7 +25,7 @@ export default function Announcements({ user }) {
       setAnnouncements(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       setLoading(false)
       // Save last seen time to clear badge
-      localStorage.setItem('last_announcement_check', new Date().toISOString())
+      if (clearBadge) clearBadge()
     })
     return () => unsub()
   }, [])

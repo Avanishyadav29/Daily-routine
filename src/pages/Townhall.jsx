@@ -5,7 +5,7 @@ import { collection, addDoc, onSnapshot, query, orderBy, limit, deleteDoc, doc, 
 
 const BAD_WORDS = ['gaali', 'harami', 'kamina', 'saala', 'bewakoof', 'chutiya', 'madarchod', 'behenchod']
 
-export default function Townhall({ user }) {
+export default function Townhall({ user, clearBadge }) {
   const [messages, setMessages] = useState([])
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(true)
@@ -18,7 +18,7 @@ export default function Townhall({ user }) {
 
   useEffect(() => {
     // Clear Townhall notification badge
-    localStorage.setItem('last_townhall_check', new Date().toISOString())
+    if (clearBadge) clearBadge()
     
     const q = query(collection(db, 'townhall'), orderBy('createdAt', 'asc'), limit(100))
     const unsub = onSnapshot(q, (snap) => {
@@ -170,24 +170,36 @@ export default function Townhall({ user }) {
 
       {/* Input Area */}
       <div className="bg-white dark:bg-[#15171e] p-3 rounded-3xl border border-slate-200 dark:border-slate-800/60 shadow-xl">
-        <div className="flex gap-2">
-            <input 
-              className="flex-1 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-slate-900 dark:text-white"
-              placeholder="Message Global Community..."
-              value={text}
-              onChange={e => setText(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSend()}
-            />
-            <button 
-              onClick={handleSend}
-              className="bg-cyan-600 hover:bg-cyan-700 text-white p-3 rounded-2xl shadow-lg shadow-cyan-600/20 transition-all flex items-center justify-center active:scale-95"
-            >
-              <Send className="w-5 h-5" />
-            </button>
-        </div>
-        <p className="text-[9px] text-center text-slate-400 mt-2 font-bold uppercase tracking-widest flex items-center justify-center gap-1">
-          <ShieldAlert className="w-3 h-3" /> Be respectful. Auto-moderation is active.
-        </p>
+        {user.isTownhallRestricted ? (
+          <div className="py-4 px-6 bg-red-500/5 border border-red-500/20 rounded-2xl flex items-center gap-4 animate-pulse">
+             <div className="p-2 bg-red-500 text-white rounded-lg"><ShieldAlert className="w-5 h-5" /></div>
+             <div>
+                <p className="text-sm font-bold text-red-500 uppercase tracking-tight">Access Restricted</p>
+                <p className="text-[10px] text-slate-500 font-medium">You are currently restricted from posting. Please contact Admin if you believe this is an error.</p>
+             </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex gap-2">
+                <input 
+                  className="flex-1 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-slate-900 dark:text-white"
+                  placeholder="Message Global Community..."
+                  value={text}
+                  onChange={e => setText(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSend()}
+                />
+                <button 
+                  onClick={handleSend}
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white p-3 rounded-2xl shadow-lg shadow-cyan-600/20 transition-all flex items-center justify-center active:scale-95"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+            </div>
+            <p className="text-[9px] text-center text-slate-400 mt-2 font-bold uppercase tracking-widest flex items-center justify-center gap-1">
+              <ShieldAlert className="w-3 h-3" /> Be respectful. Auto-moderation is active.
+            </p>
+          </>
+        )}
       </div>
     </div>
   )

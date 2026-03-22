@@ -7,7 +7,7 @@ import {
 import { Trash2 } from 'lucide-react'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
-export default function Inbox({ user }) {
+export default function Inbox({ user, clearBadge }) {
   const [messages, setMessages] = useState([])
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(true)
@@ -51,6 +51,7 @@ export default function Inbox({ user }) {
       setMessages(msgs)
       setLoading(false)
       if (!isAdmin) {
+        if (clearBadge) clearBadge()
         msgs.filter(m => !m.read && m.from !== user.uid).forEach(async (m) => {
           await updateDoc(doc(db, 'users', user.uid, 'inbox', m.id), { read: true })
         })
@@ -268,10 +269,12 @@ export default function Inbox({ user }) {
               </div>
             </div>
           ) : (
-            <div className="p-4 border-t border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/40 text-center">
-              <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2">
-                <Lock className="w-4 h-4" /> Chat is disabled. Admin hasn't enabled chat for your account yet.
-              </p>
+            <div className="p-8 bg-slate-50 dark:bg-slate-900/40 border-t dark:border-slate-800 flex flex-col items-center text-center gap-3">
+               <div className="p-3 bg-slate-200 dark:bg-slate-800 rounded-full text-slate-500 shadow-sm"><Lock className="w-6 h-6" /></div>
+               <div>
+                  <p className="font-bold text-slate-900 dark:text-white text-base">Inbox Access Restricted</p>
+                  <p className="text-xs text-slate-500 max-w-sm mt-1 leading-relaxed px-4">Admin has temporarily disabled your inbox messaging. For any urgent queries or to request access, please contact the <strong>Admin Team</strong> or your coordinator directly.</p>
+               </div>
             </div>
           )}
         </div>

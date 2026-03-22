@@ -93,6 +93,11 @@ function App() {
     return () => unsub()
   }, [])
 
+  const clearBadge = (type) => {
+    localStorage.setItem(`last_${type}_check`, new Date().toISOString())
+    setUnreadCounts(prev => ({ ...prev, [type]: 0 }))
+  }
+
   const handleLogin = async (email, password) => {
     await signInWithEmailAndPassword(auth, email, password)
     navigate('/')
@@ -158,9 +163,9 @@ function App() {
             <Route path="/timer" element={user ? <div className="hidden"></div> : <Navigate to="/login" />} />
             
             <Route path="/leaderboard" element={user ? <Leaderboard user={user} /> : <Navigate to="/login" />} />
-            <Route path="/inbox" element={user ? <Inbox user={user} /> : <Navigate to="/login" />} />
-            <Route path="/announcements" element={user ? <Announcements user={user} /> : <Navigate to="/login" />} />
-            <Route path="/townhall" element={user ? <Townhall user={user} /> : <Navigate to="/login" />} />
+            <Route path="/inbox" element={user ? <Inbox user={user} clearBadge={() => clearBadge('inbox')} /> : <Navigate to="/login" />} />
+            <Route path="/announcements" element={user ? <Announcements user={user} clearBadge={() => clearBadge('announcements')} /> : <Navigate to="/login" />} />
+            <Route path="/townhall" element={user ? <Townhall user={user} clearBadge={() => clearBadge('townhall')} /> : <Navigate to="/login" />} />
             <Route path="/badges" element={user ? <Badges user={user} /> : <Navigate to="/login" />} />
             <Route path="/feedback" element={user ? <Feedback user={user} /> : <Navigate to="/login" />} />
             <Route path="/profile" element={user ? <Profile user={user} onUpdateProfile={handleUpdateProfile} setupMode={isProfileIncomplete} /> : <Navigate to="/login" />} />
