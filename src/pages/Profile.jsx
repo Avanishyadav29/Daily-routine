@@ -68,14 +68,21 @@ export default function Profile({ user, onUpdateProfile }) {
       console.error(err)
     }
 
-    await onUpdateProfile({
-      name: profileData.name,
-      username: trimmedUsername,
-      photo: profileData.photo,
-      mobile: profileData.mobile
-    })
-    setMessage('Profile updated successfully! ✅')
-    setTimeout(() => setMessage(''), 3000)
+    try {
+      await onUpdateProfile({
+        name: profileData.name,
+        username: trimmedUsername,
+        photo: profileData.photo,
+        mobile: profileData.mobile
+      })
+      setMessage('Profile updated successfully! ✅')
+      setTimeout(() => setMessage(''), 3000)
+    } catch(err) {
+      setError('Failed to update profile.')
+      console.error(err)
+    } finally {
+      setUploading(false)
+    }
   }
 
   const handleChangePassword = async (e) => {

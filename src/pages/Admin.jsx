@@ -21,6 +21,7 @@ export default function Admin({ user }) {
       let totalRoutines = 0
       const usersWithStats = await Promise.all(
         usersSnap.docs.map(async (userDoc) => {
+          const data = userDoc.data()
           let routinesSize = 0, todaySecs = 0
           try {
             const routinesSnap = await getDocs(collection(db, 'users', userDoc.id, 'routines'))

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, Navigate, useNavigate, Link } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, Link, useLocation } from 'react-router-dom'
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'firebase/auth'
 import { doc, setDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore'
 import { auth, db } from './firebase'
@@ -21,6 +21,7 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     const saved = localStorage.getItem('daily_routine_theme')
@@ -100,13 +101,24 @@ function App() {
           </div>
         )}
         
-        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 relative">
+          
+          {/* Global Background Timer */}
+          {user && (
+            <div style={{ display: location.pathname === '/timer' ? 'block' : 'none' }}>
+              <Timer user={user} />
+            </div>
+          )}
+
           <Routes>
             <Route path="/login" element={user ? <Navigate to="/" /> : <Login onLogin={handleLogin} onSignup={handleSignup} />} />
             {/* Admin Dedicated Login */}
             <Route path="/admin-login" element={!user ? <AdminLogin onLogin={handleLogin} /> : <Navigate to={user.email === 'admin@daily.com' ? '/admin' : '/'} />} />
             <Route path="/" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
-            <Route path="/timer" element={user ? <Timer user={user} /> : <Navigate to="/login" />} />
+            
+            {/* The timer is mounted globally below, here we just serve an empty structural box to satisfy internal routing matches and prevent 'Not Found' redirect logic if any exists, but it's redundant. We can keep it to simply enforce login redirect on /timer. */}
+            <Route path="/timer" element={user ? <div className="hidden"></div> : <Navigate to="/login" />} />
+            
             <Route path="/leaderboard" element={user ? <Leaderboard user={user} /> : <Navigate to="/login" />} />
             <Route path="/inbox" element={user ? <Inbox user={user} /> : <Navigate to="/login" />} />
             <Route path="/announcements" element={user ? <Announcements user={user} /> : <Navigate to="/login" />} />

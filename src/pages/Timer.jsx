@@ -332,6 +332,8 @@ export default function Timer({ user }) {
           </div>
         )}
 
+          </div>
+        )}
         {/* Active Timer UI */}
         {(isRunning || timeLeft < MODES[mode].duration) && (
           <div className="animate-fade-in flex flex-col items-center">
@@ -397,8 +399,6 @@ export default function Timer({ user }) {
           </div>
         )}
 
-          </div>
-        )}
       </div>
     </div>
   )
