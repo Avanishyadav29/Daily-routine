@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react'
 import { Camera, Save, User, AtSign } from 'lucide-react'
-import { storage } from '../firebase'
+import { auth, storage } from '../firebase'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { updatePassword } from 'firebase/auth'
 
 export default function Profile({ user, onUpdateProfile }) {
   const rawUsername = (user.username || '').replace(/^@/, '')
@@ -14,6 +15,12 @@ export default function Profile({ user, onUpdateProfile }) {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [uploading, setUploading] = useState(false)
+  
+  const [newPassword, setNewPassword] = useState('')
+  const [passMessage, setPassMessage] = useState('')
+  const [passError, setPassError] = useState('')
+  const [savingPass, setSavingPass] = useState(false)
+  
   const fileInputRef = useRef(null)
 
   const handlePhotoUpload = async (e) => {
@@ -54,6 +61,32 @@ export default function Profile({ user, onUpdateProfile }) {
     })
     setMessage('Profile updated successfully! ✅')
     setTimeout(() => setMessage(''), 3000)
+  }
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault()
+    setPassError('')
+    setPassMessage('')
+    if (newPassword.length < 6) {
+      setPassError('Password must be at least 6 characters.')
+      return
+    }
+    setSavingPass(true)
+    try {
+      if (!auth.currentUser) throw new Error("No authenticated user.")
+      await updatePassword(auth.currentUser, newPassword)
+      setPassMessage('Password changed successfully! ✅')
+      setNewPassword('')
+      setTimeout(() => setPassMessage(''), 3000)
+    } catch (err) {
+      if (err.code === 'auth/requires-recent-login') {
+        setPassError('For security reasons, please log out and log back in to change your password.')
+      } else {
+        setPassError(err.message || 'Failed to change password. Please try again.')
+      }
+    } finally {
+      setSavingPass(false)
+    }
   }
 
   return (
@@ -170,6 +203,42 @@ export default function Profile({ user, onUpdateProfile }) {
           <div className="pt-6 border-t border-slate-200 dark:border-slate-700/50 flex justify-end">
             <button type="submit" className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold px-8 py-3 rounded-xl hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20" disabled={uploading}>
               <Save className="w-5 h-5" /> {uploading ? 'Uploading...' : 'Save Profile'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Change Password Section */}
+      <div className="bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-2xl p-6 sm:p-10 shadow-xl mt-8">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Change Password</h2>
+        
+        {passMessage && (
+          <div className="mb-6 p-4 rounded-xl bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-500/20 font-medium">
+            {passMessage}
+          </div>
+        )}
+        {passError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20 font-medium">
+            {passError}
+          </div>
+        )}
+
+        <form onSubmit={handleChangePassword} className="flex flex-col gap-6">
+          <div>
+            <label className="block mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">New Password</label>
+            <input
+              type="password"
+              className="w-full sm:w-1/2 px-4 py-3 bg-white dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder="Enter new password (min. 6 chars)"
+              required
+              minLength={6}
+            />
+          </div>
+          <div>
+            <button type="submit" className="bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white font-semibold px-8 py-3 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm" disabled={savingPass}>
+              {savingPass ? 'Updating...' : 'Update Password'}
             </button>
           </div>
         </form>
