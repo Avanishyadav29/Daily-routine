@@ -15,8 +15,18 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
     { to: '/badges', icon: <Medal className="w-5 h-5" />, label: 'Badges' },
     { to: '/inbox', icon: <MessageSquare className="w-5 h-5" />, label: 'Inbox' },
     { to: '/announcements', icon: <Megaphone className="w-5 h-5" />, label: 'Announcements' },
-    { to: '/feedback', icon: <MessageCircle className="w-5 h-5" />, label: 'Feedback' },
+    ...(user.email !== 'admin@daily.com' ? [{ to: '/feedback', icon: <MessageCircle className="w-5 h-5" />, label: 'Feedback' }] : []),
   ]
+
+  const getRoleBadge = () => {
+    const role = user.email === 'admin@daily.com' ? 'admin' : (user.role || 'user')
+    switch(role) {
+      case 'admin': return <span className="bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-widest border border-red-200 dark:border-red-500/30">Admin</span>
+      case 'moderator': return <span className="bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-widest border border-purple-200 dark:border-purple-500/30">Mod</span>
+      case 'coordinator': return <span className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-widest border border-blue-200 dark:border-blue-500/30">Coord</span>
+      default: return <span className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700">User</span>
+    }
+  }
 
   return (
     <>
@@ -57,18 +67,19 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
         <div className="p-4 border-t border-slate-200 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/20">
           <Link to="/profile" className="flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all mb-4 group cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
             {user.photo ? (
-              <img src={user.photo} alt="User" className="w-10 h-10 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700" />
+              <img src={user.photo} alt="User" className="w-10 h-10 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0" />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-inner">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-inner shrink-0">
                 {user.name.charAt(0).toUpperCase()}
               </div>
             )}
-            <div className="min-w-0 flex-1">
-              <div className="font-bold text-sm text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                {user.name}
+            <div className="min-w-0 flex-1 flex flex-col justify-center">
+              <div className="font-bold text-sm text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center justify-between gap-1">
+                <span className="truncate">{user.name}</span>
               </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 truncate font-medium">
-                @{user.username || 'user'}
+              <div className="text-xs text-slate-500 dark:text-slate-400 truncate font-medium flex items-center justify-between gap-1 mt-0.5">
+                <span className="truncate">@{user.username || 'user'}</span>
+                {getRoleBadge()}
               </div>
             </div>
           </Link>
@@ -103,11 +114,16 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
           <button onClick={toggleTheme} className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors" title="Toggle Theme">
             {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
+          
+          <button onClick={onLogout} className="p-2 text-slate-500 hover:text-red-500 transition-colors" title="Logout">
+            <LogOut className="w-5 h-5" />
+          </button>
+
           <Link to="/profile">
             {user.photo ? (
-              <img src={user.photo} className="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-600 object-cover" />
+              <img src={user.photo} className="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-600 object-cover shrink-0" />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
                 {user.name.charAt(0).toUpperCase()}
               </div>
             )}

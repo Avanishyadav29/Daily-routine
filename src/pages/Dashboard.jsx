@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, Trash2, Clock, CheckCircle2, Circle, Edit2 } from 'lucide-react'
+import { Plus, Trash2, Clock, CheckCircle2, Circle, Edit2, Calendar } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import {
@@ -8,7 +8,7 @@ import {
 
 export default function Dashboard({ user }) {
   const [routines, setRoutines] = useState([])
-  const [newRoutine, setNewRoutine] = useState({ title: '', time: '', category: 'Coding' })
+  const [newRoutine, setNewRoutine] = useState({ title: '', date: '', category: 'Coding' })
   const [isAdding, setIsAdding] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
 
@@ -30,13 +30,13 @@ export default function Dashboard({ user }) {
 
     await addDoc(collection(db, 'users', user.uid, 'routines'), {
       title: newRoutine.title,
-      time: newRoutine.time || 'Anytime',
+      date: newRoutine.date || '',
       category: newRoutine.category || 'Coding',
       isCompleted: false,
       createdAt: new Date().toISOString()
     })
 
-    setNewRoutine({ title: '', time: '', category: 'Coding' })
+    setNewRoutine({ title: '', date: '', category: 'Coding' })
     setIsAdding(false)
   }
 
@@ -130,8 +130,8 @@ export default function Dashboard({ user }) {
               </select>
             </div>
             <div>
-              <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-400">Time</label>
-              <input className="input-field" type="time" value={newRoutine.time} onChange={(e) => setNewRoutine({ ...newRoutine, time: e.target.value })} />
+              <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-400">Date to Complete</label>
+              <input className="input-field" type="date" value={newRoutine.date} onChange={(e) => setNewRoutine({ ...newRoutine, date: e.target.value })} />
             </div>
           </div>
           <div className="flex gap-3 justify-end">
@@ -170,9 +170,9 @@ export default function Dashboard({ user }) {
                     {item.title}
                   </h3>
                   <div className="flex items-center gap-3 mt-1 flex-wrap">
-                    <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-500">
-                      <Clock className="w-4 h-4" />
-                      <span>{item.time}</span>
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-500">
+                      <Calendar className="w-4 h-4" />
+                      <span>{item.date || item.time || 'Anytime'}</span>
                     </div>
                     {item.category && (
                       <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
