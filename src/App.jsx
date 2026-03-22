@@ -38,6 +38,9 @@ function App() {
           if (data.isBlocked) { signOut(auth); setUser(null); setLoading(false); return }
           setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: data.name || firebaseUser.displayName || 'User', username: data.username || '', photo: data.photo || null, mobile: data.mobile || '', violation: data.violation || false })
           setLoading(false)
+        }, (err) => {
+          console.error("Error fetching user profile:", err)
+          setLoading(false)
         })
         return () => unsubUser()
       } else {

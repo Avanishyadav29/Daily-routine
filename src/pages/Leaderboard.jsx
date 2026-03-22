@@ -45,6 +45,9 @@ export default function Leaderboard({ user }) {
       const sorted = allLeaders.sort((a, b) => b.todaySecs - a.todaySecs)
       setLeaders(sorted)
       setLoading(false)
+    }, (err) => {
+      console.error("Error fetching leaderboard:", err)
+      setLoading(false)
     })
 
     return () => usersUnsub()

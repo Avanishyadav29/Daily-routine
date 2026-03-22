@@ -41,6 +41,9 @@ export default function Admin({ user }) {
       )
       setAllUsers(usersWithStats)
       setStats({ totalUsers: usersSnap.size, totalRoutines })
+    }, (err) => {
+      console.error("Admin user list fetch error:", err)
+      alert("Permission denied. Ensure you are an Admin and Firebase Rules allow access.")
     })
     return () => unsub()
   }, [user])
