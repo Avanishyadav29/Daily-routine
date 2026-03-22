@@ -2,10 +2,74 @@ import React, { useState, useEffect } from 'react'
 import { Users, Trash2, Shield, Activity, Ban, CheckCircle, Eye, Clock, X, AlertTriangle, MessageCircle, Star, MessageSquare, Edit2, UserPlus, Lock, Unlock } from 'lucide-react'
 import { initializeApp } from 'firebase/app'
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth'
-import { setDoc } from 'firebase/firestore'
+import { collection, getDocs, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, where, setDoc } from 'firebase/firestore'
 import { Navigate } from 'react-router-dom'
 import { db } from '../firebase'
-import { collection, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore'
+
+const UserTable = ({ users, onAction }) => {
+  const { viewUser, flagViolation, toggleBlockUser, deleteUser, toggleChatAccess, toggleTownhallRestriction, editUserEmail } = onAction
+  
+  const formatTime = (secs) => {
+    if (!secs) return '0m'
+    const h = Math.floor(secs / 3600); const m = Math.floor((secs % 3600) / 60)
+    if (h > 0) return `${h}h ${m}m`
+    return `${m}m`
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left border-collapse whitespace-nowrap">
+        <thead className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase text-slate-500">
+          <tr>
+            <th className="px-6 py-4">User</th>
+            <th className="px-6 py-4 text-center">Control</th>
+            <th className="px-6 py-4 text-center">Status</th>
+            <th className="px-6 py-4 text-center">Activity</th>
+            <th className="px-6 py-4 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+          {users.map(u => (
+            <tr key={u.uid} className="hover:bg-slate-50 dark:hover:bg-white/[0.01] group">
+              <td className="px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-xs uppercase">{u.name?.charAt(0)}</div>
+                  <div>
+                    <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                       {u.name}
+                       {u.role === 'admin' && <Shield className="w-3 h-3 text-red-500" />}
+                    </div>
+                    <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                      {u.email} <button onClick={() => editUserEmail(u.uid, u.email)} className="opacity-0 group-hover:opacity-100 transition-opacity"><Edit2 className="w-2.5 h-2.5" /></button>
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td className="px-6 py-4 text-center">
+                <div className="flex flex-col gap-1 items-center scale-75">
+                  <button onClick={() => toggleChatAccess(u.uid, u.chatEnabled, u.email)} className={`px-3 py-1 rounded-full border text-[10px] font-bold ${u.chatEnabled ? 'text-green-500 border-green-500/30' : 'text-slate-400'}`}>Inbox: {u.chatEnabled ? 'ON' : 'OFF'}</button>
+                  <button onClick={() => toggleTownhallRestriction(u.uid, u.isTownhallRestricted, u.email)} className={`px-3 py-1 rounded-full border text-[10px] font-bold ${!u.isTownhallRestricted ? 'text-blue-500 border-blue-500/30' : 'text-orange-400'}`}>TH: {!u.isTownhallRestricted ? 'OPEN' : 'LOCKED'}</button>
+                </div>
+              </td>
+              <td className="px-6 py-4 text-center">
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${u.isBlocked ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>{u.isBlocked ? 'BLOCKED' : 'ACTIVE'}</span>
+              </td>
+              <td className="px-6 py-4 text-center">
+                <div className="text-xs font-bold text-blue-500">{formatTime(u.todayFocusHours)}</div>
+              </td>
+              <td className="px-6 py-4 text-right space-x-1">
+                <button onClick={() => viewUser(u)} className="p-1.5 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-500/10 rounded-lg"><Eye className="w-4 h-4" /></button>
+                <button onClick={() => flagViolation(u.uid, u.violation, u.email)} className={`p-1.5 rounded-lg ${u.violation ? 'text-orange-500 bg-orange-100' : 'text-slate-400 opacity-30 hover:opacity-100'}`}><AlertTriangle className="w-4 h-4" /></button>
+                <button onClick={() => toggleBlockUser(u.uid, u.isBlocked, u.email)} className={`p-1.5 rounded-lg ${u.isBlocked ? 'text-green-500' : 'text-red-400 opacity-30 hover:opacity-100 font-bold'}`}>{u.isBlocked ? <Unlock className="w-4 h-4" /> : <Ban className="w-4 h-4" />}</button>
+                <button onClick={() => deleteUser(u.uid, u.email)} className="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-500/10 rounded-lg opacity-30 hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
 
 export default function Admin({ user }) {
   const [allUsers, setAllUsers] = useState([])
@@ -144,12 +208,34 @@ export default function Admin({ user }) {
     setLoadingSessions(false)
   }
 
+  const clearTownhallMessages = async (type) => {
+    if (!window.confirm(`Clear ${type === 'all' ? 'ALL' : type} Townhall messages?` || '')) return
+    const thRef = collection(db, 'townhall')
+    let q = query(thRef)
+    const now = new Date(); const todayStr = now.toISOString().split('T')[0]
+    const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1); const yestStr = yesterday.toISOString().split('T')[0]
+    if (type === 'today') q = query(thRef, where('createdAt', '>=', todayStr))
+    else if (type === 'yesterday') q = query(thRef, where('createdAt', '>=', yestStr), where('createdAt', '<', todayStr))
+    const snap = await getDocs(q); let total = 0
+    for (const d of snap.docs) { await deleteDoc(d.ref); total++ }
+    alert(`Deleted ${total} messages.`)
+  }
+
   const formatTime = (secs) => {
     if (!secs) return '0m'
     const h = Math.floor(secs / 3600); const m = Math.floor((secs % 3600) / 60)
     if (h > 0) return `${h}h ${m}m`
     return `${m}m`
   }
+
+  const staffRoles = ['admin', 'moderator', 'coordinator']
+  const filteredUsers = allUsers.filter(u => 
+    u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    u.email?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    u.username?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+  const staffUsers = filteredUsers.filter(u => staffRoles.includes(u.role?.toLowerCase() || 'user'))
+  const generalUsers = filteredUsers.filter(u => !staffRoles.includes(u.role?.toLowerCase() || 'user'))
 
   return (
     <div className="max-w-6xl mx-auto animate-fade-in pb-10">
@@ -206,7 +292,7 @@ export default function Admin({ user }) {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
             <div className="glass-card p-4">
               <div className="text-2xl font-black text-blue-600">{stats.totalUsers}</div>
               <div className="text-xs text-slate-500 uppercase">Total Users</div>
@@ -225,62 +311,46 @@ export default function Admin({ user }) {
             </div>
           </div>
 
-          <div className="glass-card p-0 overflow-hidden border border-slate-200 dark:border-slate-800">
-          <div className="p-4 bg-amber-500/5 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
+          <div className="bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-3xl p-6 mb-8 shadow-sm">
+             <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-cyan-500/10 text-cyan-500 rounded-xl"><Activity className="w-5 h-5" /></div>
+                <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-tight text-sm">Townhall Controls</h3>
+             </div>
+             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button onClick={() => clearTownhallMessages('today')} className="px-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs font-bold hover:bg-slate-200 transition-all">Clear Today's Chat</button>
+                <button onClick={() => clearTownhallMessages('yesterday')} className="px-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs font-bold hover:bg-slate-200 transition-all">Clear Yesterday's Chat</button>
+                <button onClick={() => clearTownhallMessages('all')} className="px-4 py-3 bg-red-500 text-white rounded-2xl text-xs font-bold hover:bg-red-600 transition-all">Clear All History</button>
+             </div>
+          </div>
+
+          <div className="p-4 bg-amber-500/5 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center gap-3 mb-8">
              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
              <p className="text-[10px] sm:text-[11px] text-amber-600 dark:text-amber-500 font-bold uppercase tracking-tight">
                Important: Deleting here only removes routines/data. To fully delete a user (allowing re-signup), you must remove them from the "Authentication" tab in Firebase Console.
              </p>
           </div>
-          <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse whitespace-nowrap">
-                <thead className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase text-slate-500">
-                  <tr>
-                    <th className="px-6 py-4">User</th>
-                    <th className="px-6 py-4 text-center">Control</th>
-                    <th className="px-6 py-4 text-center">Status</th>
-                    <th className="px-6 py-4 text-center">Activity</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {allUsers
-                    .filter(u => u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase()) || u.username?.toLowerCase().includes(searchTerm.toLowerCase()))
-                    .map(u => (
-                    <tr key={u.uid} className="hover:bg-slate-50 dark:hover:bg-white/[0.01]">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-xs">{u.name?.charAt(0)}</div>
-                          <div>
-                            <div className="text-sm font-bold text-slate-900 dark:text-white">{u.name}</div>
-                            <div className="text-[10px] text-slate-400 group flex items-center gap-1">
-                              {u.email} <button onClick={() => editUserEmail(u.uid, u.email)} className="opacity-0 group-hover:opacity-100"><Edit2 className="w-2.5 h-2.5" /></button>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex flex-col gap-1 items-center scale-75">
-                          <button onClick={() => toggleChatAccess(u.uid, u.chatEnabled)} className={`px-3 py-1 rounded-full border ${u.chatEnabled ? 'text-green-500 border-green-500/30' : 'text-slate-400'}`}>Chat: {u.chatEnabled ? 'On' : 'Off'}</button>
-                          <button onClick={() => toggleTownhallRestriction(u.uid, u.isTownhallRestricted)} className={`px-3 py-1 rounded-full border ${!u.isTownhallRestricted ? 'text-blue-500 border-blue-500/30' : 'text-orange-400'}`}>TH: {!u.isTownhallRestricted ? 'Open' : 'Restricted'}</button>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${u.isBlocked ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>{u.isBlocked ? 'BLOCKED' : 'ACTIVE'}</span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="text-xs font-bold text-blue-500">{formatTime(u.todayFocusHours)}</div>
-                      </td>
-                      <td className="px-6 py-4 text-right space-x-1">
-                        <button onClick={() => viewUser(u)} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-lg"><Eye className="w-4 h-4" /></button>
-                        <button onClick={() => flagViolation(u.uid, u.violation)} className={`p-1.5 rounded-lg ${u.violation ? 'text-orange-500 bg-orange-100' : 'text-slate-400'}`}><AlertTriangle className="w-4 h-4" /></button>
-                        <button onClick={() => toggleBlockUser(u.uid, u.isBlocked)} className={`p-1.5 rounded-lg ${u.isBlocked ? 'text-green-500' : 'text-red-400'}`}>{u.isBlocked ? <CheckCircle className="w-4 h-4" /> : <Ban className="w-4 h-4" />}</button>
-                        <button onClick={() => deleteUser(u.uid, u.email)} className="p-1.5 text-red-500 hover:bg-red-100 rounded-lg"><Trash2 className="w-4 h-4" /></button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+          {/* SECTION 1: STAFF */}
+          {staffUsers.length > 0 && (
+            <div className="mb-10">
+              <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                 <Shield className="w-5 h-5 text-blue-500" /> Staff & Management
+                 <span className="text-[10px] bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full">{staffUsers.length}</span>
+              </h2>
+              <div className="glass-card p-0 overflow-hidden border border-slate-200 dark:border-slate-800">
+                <UserTable users={staffUsers} onAction={{ viewUser, flagViolation, toggleBlockUser, deleteUser, toggleChatAccess, toggleTownhallRestriction, editUserEmail }} />
+              </div>
+            </div>
+          )}
+
+          {/* SECTION 2: USERS */}
+          <div>
+            <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+               <Users className="w-5 h-5 text-indigo-500" /> Regular Members
+               <span className="text-[10px] bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full">{generalUsers.length}</span>
+            </h2>
+            <div className="glass-card p-0 overflow-hidden border border-slate-200 dark:border-slate-800">
+              <UserTable users={generalUsers} onAction={{ viewUser, flagViolation, toggleBlockUser, deleteUser, toggleChatAccess, toggleTownhallRestriction, editUserEmail }} />
             </div>
           </div>
         </>
