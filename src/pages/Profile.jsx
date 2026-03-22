@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react'
 import { Camera, Save, User, AtSign } from 'lucide-react'
-import { auth, storage } from '../firebase'
+import { auth, storage, db } from '../firebase'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { collection, query, where, getDocs } from 'firebase/firestore'
 import { updatePassword } from 'firebase/auth'
 
 export default function Profile({ user, onUpdateProfile }) {
@@ -48,9 +49,23 @@ export default function Profile({ user, onUpdateProfile }) {
       setError('Username is required. Please enter a username (without @).')
       return
     }
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(trimmedUsername)) {
-      setError('Username must be 3-20 characters and can only contain letters, numbers, and underscores.')
+    if (!/^[a-zA-Z0-9]/.test(trimmedUsername)) {
+      setError('Username must start with a letter or number.')
       return
+    }
+
+    setUploading(true)
+    try {
+      const q = query(collection(db, 'users'), where('username', '==', trimmedUsername.toLowerCase()))
+      const snap = await getDocs(q)
+      const exists = snap.docs.some(d => d.id !== user.uid)
+      if (exists) {
+        setError('Username is already taken.')
+        setUploading(false)
+        return
+      }
+    } catch (err) {
+      console.error(err)
     }
 
     await onUpdateProfile({
@@ -172,7 +187,7 @@ export default function Profile({ user, onUpdateProfile }) {
                     required
                   />
                 </div>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">3-20 characters, letters, numbers and underscores only.</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">Must start with a letter or number.</p>
               </div>
 
               {/* Mobile */}

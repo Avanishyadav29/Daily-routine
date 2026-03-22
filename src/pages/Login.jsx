@@ -48,7 +48,11 @@ export default function Login({ onLogin, onSignup }) {
       if (!formData.name.trim()) { setError('Please enter your name'); return }
       const rawUsername = formData.username.replace(/^@/, '').trim()
       if (!rawUsername) { setError('Please enter a username'); return }
-      if (!/^[a-zA-Z0-9_]{3,20}$/.test(rawUsername)) { setError('Username: 3-20 chars, letters/numbers/underscore only.'); return }
+      if (!/^[a-zA-Z0-9]/.test(rawUsername)) { setError('Username must start with a letter or number.'); return }
+      
+      setLoading(true)
+      const isTaken = await getEmailByUsername(rawUsername)
+      if (isTaken) { setError('Username is already taken.'); setLoading(false); return }
       if (!isValidEmail(formData.email)) { setError('Invalid email format.'); return }
       if (!formData.mobile.trim()) { setError('Please enter your mobile number'); return }
       if (formData.password.length < 4) { setError('Password must be at least 4 characters'); return }
@@ -107,6 +111,7 @@ export default function Login({ onLogin, onSignup }) {
           <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
             {mode === 'login' ? 'Welcome Back' : mode === 'signup' ? 'Create Account' : 'Reset Password'}
           </h2>
+          {mode === 'signup' && <p className="text-xs text-slate-400 mt-1.5 ml-1">Must start with a letter or number.</p>}
           <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm">
             {mode === 'login' ? 'Sign in with email or @username' : mode === 'signup' ? 'Join and start tracking your habits' : 'Enter your email to receive a reset link'}
           </p>

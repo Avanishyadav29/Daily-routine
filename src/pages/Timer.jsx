@@ -158,40 +158,41 @@ export default function Timer({ user }) {
   }
 
   const startTimer = async () => {
-    // Play the start bell notification
     playBellSound('start')
-    
     startTimeRef.current = new Date().toISOString()
     
-    // Write active session to Firestore for admin monitoring
-    const activeRef = doc(db, 'users', user.uid)
-    await updateDoc(activeRef, {
-      activeSession: {
-        taskId: selectedTask?.id || 'none',
-        taskTitle: selectedTask?.title || 'General Work',
-        category: category,
-        mode: mode,
-        startedAt: startTimeRef.current,
-        status: 'running'
-      }
-    })
+    try {
+      const activeRef = doc(db, 'users', user.uid)
+      await updateDoc(activeRef, {
+        activeSession: {
+          taskId: selectedTask?.id || 'none',
+          taskTitle: selectedTask?.title || 'General Work',
+          category: category,
+          mode: mode,
+          startedAt: startTimeRef.current,
+          status: 'running'
+        }
+      })
+    } catch (err) { console.error("Active session sync failed:", err) }
     
     setIsRunning(true)
   }
 
   const pauseTimer = async () => {
     setIsRunning(false)
-    const activeRef = doc(db, 'users', user.uid)
-    await updateDoc(activeRef, {
-      'activeSession.status': 'paused'
-    })
+    try {
+      const activeRef = doc(db, 'users', user.uid)
+      await updateDoc(activeRef, { 'activeSession.status': 'paused' })
+    } catch (err) {}
   }
 
   const resetTimer = async () => {
     setIsRunning(false)
     setTimeLeft(MODES[mode].duration)
-    const activeRef = doc(db, 'users', user.uid)
-    await updateDoc(activeRef, { activeSession: null })
+    try {
+      const activeRef = doc(db, 'users', user.uid)
+      await updateDoc(activeRef, { activeSession: null })
+    } catch (err) {}
   }
 
   const selectMode = (newMode) => {
