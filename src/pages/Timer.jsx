@@ -107,31 +107,64 @@ export default function Timer({ user }) {
   }, [user?.uid])
 
   // Timer tick
+  // Title & Branding
   useEffect(() => {
-    if (isRunning) {
-      intervalRef.current = setInterval(() => {
+    document.title = "Time Arena - Focus Mode"
+    return () => { document.title = "Daily Routine" }
+  }, [])
+
+  // Resume Session from Firestore (Refresh/Reconnect)
+  useEffect(() => {
+    if (!user?.activeSession || isRunning) return
+    const { startedAt, mode: sessionMode, status } = user.activeSession
+    if (status !== 'running') return
+
+    const start = new Date(startedAt).getTime()
+    const now = Date.now()
+    const elapsed = Math.floor((now - start) / 1000)
+    const duration = MODES[sessionMode].duration
+
+    if (elapsed < duration) {
+      setMode(sessionMode)
+      setTimeLeft(duration - elapsed)
+      setIsRunning(true)
+      startTimeRef.current = startedAt
+    } else if (elapsed < duration + 300) { 
+      // Finished recently (within 5 mins of target)
+      handleTimerComplete(0, sessionMode, startedAt)
+    } else {
+      // Stale session (long ago), just clear it
+      updateDoc(doc(db, 'users', user.uid), { activeSession: null }).catch(() => {})
+    }
+  }, [user?.activeSession, isRunning])
+
+  // Timer ticker
+  useEffect(() => {
+    let t;
+    if (isRunning && timeLeft > 0) {
+      t = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
-            clearInterval(intervalRef.current)
-            handleTimerComplete()
+            clearInterval(t)
+            handleTimerComplete(0)
             return 0
           }
           return prev - 1
         })
       }, 1000)
-    } else {
-      clearInterval(intervalRef.current)
     }
-    return () => clearInterval(intervalRef.current)
-  }, [isRunning])
+    return () => clearInterval(t)
+  }, [isRunning, timeLeft])
 
-  const handleTimerComplete = async () => {
+  const handleTimerComplete = async (forcedTimeLeft = null, forcedMode = null, forcedStart = null) => {
     setIsRunning(false)
     if (!isMuted) playBellSound('stop')
 
-    const elapsed = MODES[mode].duration - timeLeft
+    const currentMode = forcedMode || mode
+    const currentTimeLeft = forcedTimeLeft !== null ? forcedTimeLeft : timeLeft
+    const elapsed = MODES[currentMode].duration - currentTimeLeft
     
-    if (mode !== 'BREAK' && elapsed > 5) {
+    if (currentMode !== 'BREAK' && elapsed > 5) {
       try {
         const sessionData = {
           userId: user.uid,
@@ -139,9 +172,9 @@ export default function Timer({ user }) {
           taskId: selectedTask?.id || 'none',
           taskTitle: selectedTask?.title || 'General Work',
           category: category,
-          mode: mode,
+          mode: currentMode,
           duration: elapsed,
-          startedAt: startTimeRef.current || new Date().toISOString(),
+          startedAt: forcedStart || startTimeRef.current || new Date().toISOString(),
           completedAt: new Date().toISOString(),
           completed: true,
         }
@@ -159,7 +192,7 @@ export default function Timer({ user }) {
       await updateDoc(doc(db, 'users', user.uid), { activeSession: null }).catch(() => {})
     }
 
-    setTimeLeft(MODES[mode].duration)
+    setTimeLeft(MODES[currentMode].duration)
     setCooldown(120)
   }
 

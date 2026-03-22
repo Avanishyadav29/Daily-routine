@@ -46,10 +46,12 @@ const UserTable = ({ users, onAction }) => {
                 </div>
               </td>
               <td className="px-6 py-4 text-center">
-                <div className="flex flex-col gap-1 items-center scale-75">
-                  <button onClick={() => toggleChatAccess(u.uid, u.chatEnabled, u.email)} className={`px-3 py-1 rounded-full border text-[10px] font-bold ${u.chatEnabled ? 'text-green-500 border-green-500/30' : 'text-slate-400'}`}>Inbox: {u.chatEnabled ? 'ON' : 'OFF'}</button>
-                  <button onClick={() => toggleTownhallRestriction(u.uid, u.isTownhallRestricted, u.email)} className={`px-3 py-1 rounded-full border text-[10px] font-bold ${!u.isTownhallRestricted ? 'text-blue-500 border-blue-500/30' : 'text-orange-400'}`}>TH: {!u.isTownhallRestricted ? 'OPEN' : 'LOCKED'}</button>
-                </div>
+                {u.email !== 'admin@daily.com' && (
+                  <div className="flex flex-col gap-1 items-center scale-75">
+                    <button onClick={() => toggleChatAccess(u.uid, u.chatEnabled, u.email)} className={`px-3 py-1 rounded-full border text-[10px] font-bold ${u.chatEnabled ? 'text-green-500 border-green-500/30' : 'text-slate-400'}`}>Inbox: {u.chatEnabled ? 'ON' : 'OFF'}</button>
+                    <button onClick={() => toggleTownhallRestriction(u.uid, u.isTownhallRestricted, u.email)} className={`px-3 py-1 rounded-full border text-[10px] font-bold ${!u.isTownhallRestricted ? 'text-blue-500 border-blue-500/30' : 'text-orange-400'}`}>TH: {!u.isTownhallRestricted ? 'OPEN' : 'LOCKED'}</button>
+                  </div>
+                )}
               </td>
               <td className="px-6 py-4 text-center">
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${u.isBlocked ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>{u.isBlocked ? 'BLOCKED' : 'ACTIVE'}</span>
@@ -58,10 +60,14 @@ const UserTable = ({ users, onAction }) => {
                 <div className="text-xs font-bold text-blue-500">{formatTime(u.todayFocusHours)}</div>
               </td>
               <td className="px-6 py-4 text-right space-x-1">
-                <button onClick={() => viewUser(u)} className="p-1.5 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-500/10 rounded-lg"><Eye className="w-4 h-4" /></button>
-                <button onClick={() => flagViolation(u.uid, u.violation, u.email)} className={`p-1.5 rounded-lg ${u.violation ? 'text-orange-500 bg-orange-100' : 'text-slate-400 opacity-30 hover:opacity-100'}`}><AlertTriangle className="w-4 h-4" /></button>
-                <button onClick={() => toggleBlockUser(u.uid, u.isBlocked, u.email)} className={`p-1.5 rounded-lg ${u.isBlocked ? 'text-green-500' : 'text-red-400 opacity-30 hover:opacity-100 font-bold'}`}>{u.isBlocked ? <Unlock className="w-4 h-4" /> : <Ban className="w-4 h-4" />}</button>
-                <button onClick={() => deleteUser(u.uid, u.email)} className="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-500/10 rounded-lg opacity-30 hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
+                <button onClick={() => viewUser(u)} title="View Progress" className="p-1.5 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-500/10 rounded-lg"><Eye className="w-4 h-4" /></button>
+                {u.email !== 'admin@daily.com' && (
+                  <>
+                    <button onClick={() => flagViolation(u.uid, u.violation, u.email)} title="Flag Violation" className={`p-1.5 rounded-lg ${u.violation ? 'text-orange-500 bg-orange-100' : 'text-slate-400 opacity-30 hover:opacity-100'}`}><AlertTriangle className="w-4 h-4" /></button>
+                    <button onClick={() => toggleBlockUser(u.uid, u.isBlocked, u.email)} title="Block User" className={`p-1.5 rounded-lg ${u.isBlocked ? 'text-green-500' : 'text-red-400 opacity-30 hover:opacity-100 font-bold'}`}>{u.isBlocked ? <Unlock className="w-4 h-4" /> : <Ban className="w-4 h-4" />}</button>
+                    <button onClick={() => deleteUser(u.uid, u.email)} title="Delete User" className="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-500/10 rounded-lg opacity-30 hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
+                  </>
+                )}
               </td>
             </tr>
           ))}
