@@ -57,23 +57,28 @@ export default function Admin({ user }) {
 
   if (user?.email !== 'admin@daily.com') return <Navigate to="/" />
 
-  const toggleBlockUser = async (uid, current) => {
+  const toggleBlockUser = async (uid, current, email) => {
+    if (email === 'admin@daily.com') return alert("Cannot block the Admin account!")
     await updateDoc(doc(db, 'users', uid), { isBlocked: !current })
   }
 
-  const changeRole = async (uid, newRole) => {
+  const changeRole = async (uid, newRole, email) => {
+    if (email === 'admin@daily.com') return alert("Cannot change Admin role!")
     await updateDoc(doc(db, 'users', uid), { role: newRole })
   }
 
-  const toggleChatAccess = async (uid, current) => {
+  const toggleChatAccess = async (uid, current, email) => {
+    if (email === 'admin@daily.com') return alert("Admin always has chat access!")
     await updateDoc(doc(db, 'users', uid), { chatEnabled: !current })
   }
 
-  const toggleTownhallRestriction = async (uid, current) => {
+  const toggleTownhallRestriction = async (uid, current, email) => {
+    if (email === 'admin@daily.com') return alert("Admin cannot be restricted from Townhall!")
     await updateDoc(doc(db, 'users', uid), { isTownhallRestricted: !current })
   }
 
   const editUserEmail = async (uid, currentEmail) => {
+    if (currentEmail === 'admin@daily.com') return alert("Cannot edit Admin email here!")
     const newEmail = window.prompt("Enter new email for user:", currentEmail)
     if (newEmail && newEmail !== currentEmail) {
       try {
@@ -83,16 +88,19 @@ export default function Admin({ user }) {
     }
   }
 
-  const flagViolation = async (uid, current) => {
+  const flagViolation = async (uid, current, email) => {
+    if (email === 'admin@daily.com') return
     await updateDoc(doc(db, 'users', uid), { violation: !current })
     setAllUsers(prev => prev.map(u => u.uid === uid ? { ...u, violation: !current } : u))
   }
 
   const deleteUser = async (uid, email) => {
+    if (email === 'admin@daily.com') return alert("Cannot delete the Admin account!")
     if (!window.confirm(`Delete user ${email}?`)) return
     await deleteDoc(doc(db, 'users', uid))
     const inboxSnap = await getDocs(collection(db, 'users', uid, 'inbox'))
     for (const d of inboxSnap.docs) await deleteDoc(d.ref)
+    setAllUsers(prev => prev.filter(u => u.uid !== uid))
   }
 
   const handleCreateUser = async (e) => {
@@ -312,19 +320,19 @@ export default function Admin({ user }) {
               <div className="space-y-3">
                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Access Control</h3>
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button onClick={() => toggleBlockUser(selectedUser.uid, selectedUser.isBlocked)} className={`px-4 py-3 rounded-2xl border font-bold text-xs flex items-center justify-between transition-all ${selectedUser.isBlocked ? 'bg-red-500 text-white border-red-400 shadow-lg shadow-red-500/20' : 'bg-green-500/5 text-green-600 border-green-500/20 hover:bg-red-500/10 hover:text-red-500'}`}>
+                    <button onClick={() => toggleBlockUser(selectedUser.uid, selectedUser.isBlocked, selectedUser.email)} className={`px-4 py-3 rounded-2xl border font-bold text-xs flex items-center justify-between transition-all ${selectedUser.isBlocked ? 'bg-red-500 text-white border-red-400 shadow-lg shadow-red-500/20' : 'bg-green-500/5 text-green-600 border-green-500/20 hover:bg-red-500/10 hover:text-red-500'}`}>
                        <span>Blocked Status</span>
                        {selectedUser.isBlocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
                     </button>
-                    <button onClick={() => toggleChatAccess(selectedUser.uid, selectedUser.chatEnabled)} className={`px-4 py-3 rounded-2xl border font-bold text-xs flex items-center justify-between transition-all ${selectedUser.chatEnabled ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-600/20' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-indigo-500/10'}`}>
+                    <button onClick={() => toggleChatAccess(selectedUser.uid, selectedUser.chatEnabled, selectedUser.email)} className={`px-4 py-3 rounded-2xl border font-bold text-xs flex items-center justify-between transition-all ${selectedUser.chatEnabled ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-600/20' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-indigo-500/10'}`}>
                        <span>Inbox Permission</span>
                        <MessageSquare className="w-4 h-4" />
                     </button>
-                    <button onClick={() => toggleTownhallRestriction(selectedUser.uid, selectedUser.isTownhallRestricted)} className={`px-4 py-3 rounded-2xl border font-bold text-xs flex items-center justify-between transition-all ${!selectedUser.isTownhallRestricted ? 'bg-cyan-600 text-white border-cyan-500 shadow-lg shadow-cyan-600/20' : 'bg-orange-500/5 text-orange-500 border-orange-500/20'}`}>
+                    <button onClick={() => toggleTownhallRestriction(selectedUser.uid, selectedUser.isTownhallRestricted, selectedUser.email)} className={`px-4 py-3 rounded-2xl border font-bold text-xs flex items-center justify-between transition-all ${!selectedUser.isTownhallRestricted ? 'bg-cyan-600 text-white border-cyan-500 shadow-lg shadow-cyan-600/20' : 'bg-orange-500/5 text-orange-500 border-orange-500/20'}`}>
                        <span>Townhall Access</span>
                        <Activity className="w-4 h-4" />
                     </button>
-                    <button onClick={() => flagViolation(selectedUser.uid, selectedUser.violation)} className={`px-4 py-3 rounded-2xl border font-bold text-xs flex items-center justify-between transition-all ${selectedUser.violation ? 'bg-orange-500 text-white border-orange-400' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:text-orange-500'}`}>
+                    <button onClick={() => flagViolation(selectedUser.uid, selectedUser.violation, selectedUser.email)} className={`px-4 py-3 rounded-2xl border font-bold text-xs flex items-center justify-between transition-all ${selectedUser.violation ? 'bg-orange-500 text-white border-orange-400' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:text-orange-500'}`}>
                        <span>Flag Account</span>
                        <AlertTriangle className="w-4 h-4" />
                     </button>

@@ -151,7 +151,7 @@ export default function Townhall({ user }) {
               </div>
               
               <div className="flex items-center gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                {canDelete && (
+                {(canDelete || m.fromUid === user.uid) && (
                   <button onClick={() => handleDelete(m.id)} className="text-[10px] text-red-500 hover:underline flex items-center gap-1">
                     <Trash2 className="w-3 h-3" /> Delete
                   </button>
