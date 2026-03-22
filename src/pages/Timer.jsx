@@ -131,28 +131,35 @@ export default function Timer({ user }) {
     // Play the stop bell notification
     if (!isMuted) playBellSound('stop')
 
-    const elapsed = MODES[mode].duration
+    const elapsed = MODES[mode].duration - timeLeft
     
-    // Save session to Firestore
-    if (mode !== 'BREAK') {
-      const sessionData = {
-        userId: user.uid,
-        userName: user.name,
-        taskId: selectedTask?.id || 'none',
-        taskTitle: selectedTask?.title || 'General Work',
-        category: category,
-        mode: mode,
-        duration: elapsed,
-        startedAt: startTimeRef.current || new Date().toISOString(),
-        completedAt: new Date().toISOString(),
-        completed: true,
-      }
-      await addDoc(collection(db, 'users', user.uid, 'sessions'), sessionData)
-      // Also save to global sessions for leaderboard
-      await addDoc(collection(db, 'globalSessions'), sessionData)
+    // Save session to Firestore if it lasted more than 5 seconds
+    if (mode !== 'BREAK' && elapsed > 5) {
+      try {
+        const sessionData = {
+          userId: user.uid,
+          userName: user.name,
+          taskId: selectedTask?.id || 'none',
+          taskTitle: selectedTask?.title || 'General Work',
+          category: category,
+          mode: mode,
+          duration: elapsed,
+          startedAt: startTimeRef.current || new Date().toISOString(),
+          completedAt: new Date().toISOString(),
+          completed: true,
+        }
+        addDoc(collection(db, 'users', user.uid, 'sessions'), sessionData)
+        addDoc(collection(db, 'globalSessions'), sessionData)
+      } catch (err) { console.warn("Session logging failed:", err) }
     }
 
-    // After session, reset to selected mode and lock the start button for 120 seconds instead of auto-starting a break
+    // Reset user's active status on Firestore
+    try {
+      const activeRef = doc(db, 'users', user.uid)
+      updateDoc(activeRef, { activeSession: null }).catch(() => {})
+    } catch (err) {}
+
+    // After session, reset to selected mode and lock the start button for 120 seconds
     setTimeLeft(MODES[mode].duration)
     setCooldown(120)
   }

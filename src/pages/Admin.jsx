@@ -17,43 +17,35 @@ export default function Admin({ user }) {
     if (user?.email !== 'admin@daily.com') return
 
     // Real-time users listener
-    const unsub = onSnapshot(collection(db, 'users'), async (usersSnap) => {
-      let totalRoutines = 0
-      const usersWithStats = await Promise.all(
-        usersSnap.docs.map(async (userDoc) => {
-          const data = userDoc.data()
-          let routinesSize = 0, todaySecs = 0
-          try {
-            const routinesSnap = await getDocs(collection(db, 'users', userDoc.id, 'routines'))
-            routinesSize = routinesSnap.size
-            totalRoutines += routinesSize
-
-            const sessionsSnap = await getDocs(collection(db, 'users', userDoc.id, 'sessions'))
-            const today = new Date().toDateString()
-            todaySecs = sessionsSnap.docs
-              .map(d => d.data())
-              .filter(s => new Date(s.startedAt).toDateString() === today && s.completed)
-              .reduce((a, s) => a + (s.duration || 0), 0)
-          } catch (err) {
-            console.warn("Could not fetch stats for user", userDoc.id, err)
-          }
-
-          return {
-            uid: userDoc.id,
-            ...data,
-            routinesCount: routinesSize,
-            todayFocusHours: todaySecs,
-          }
-        })
-      )
-      setAllUsers(usersWithStats)
-      setStats({ totalUsers: usersSnap.size, totalRoutines })
+    const unsub = onSnapshot(collection(db, 'users'), (usersSnap) => {
+      const usersList = usersSnap.docs.map(doc => ({
+        uid: doc.id,
+        ...doc.data()
+      }))
+      setAllUsers(usersList)
+      setStats(prev => ({ ...prev, totalUsers: usersSnap.size }))
     }, (err) => {
       console.error("Admin user list fetch error:", err)
       alert("Permission denied. Ensure you are an Admin and Firebase Rules allow access.")
     })
     return () => unsub()
   }, [user])
+
+  // Aggregate stats separately (optimized)
+  useEffect(() => {
+    if (allUsers.length === 0) return
+    const getGlobalStats = async () => {
+      try {
+        const globalSessionsSnap = await getDocs(collection(db, 'globalSessions'))
+        // Optional: calculate total routines if needed, but for now let's keep it simple
+        setStats(prev => ({ 
+          ...prev, 
+          totalRoutines: allUsers.reduce((acc, u) => acc + (u.routinesCount || 0), acc) 
+        }))
+      } catch (err) {}
+    }
+    getGlobalStats()
+  }, [allUsers.length])
 
   // Load feedbacks
   useEffect(() => {
@@ -271,7 +263,7 @@ export default function Admin({ user }) {
                       )}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      {u.activeSession ? (
+                      {u.activeSession && u.activeSession.status === 'running' ? (
                         <div className="flex flex-col items-center gap-1">
                           <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-semibold animate-pulse">
                             <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> LIVE
