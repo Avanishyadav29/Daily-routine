@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Play, Pause, RotateCcw, Coffee, Zap, CheckCircle2, Clock } from 'lucide-react'
+import { Play, Pause, RotateCcw, Coffee, Zap, CheckCircle2, Clock, AlertTriangle, BellOff, ChevronDown } from 'lucide-react'
 import { db } from '../firebase'
 import { collection, addDoc, doc, updateDoc, onSnapshot, query, orderBy } from 'firebase/firestore'
 
@@ -9,9 +9,57 @@ const MODES = {
   BREAK: { label: '2 Min Break', duration: 2 * 60, color: 'from-green-500 to-emerald-600' },
 }
 
+// Generates a beautiful, rich bell tone using Web Audio API (FM Synthesis)
+const playBellSound = (type = 'start') => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    
+    const playDing = (freq, startTime, duration, vol) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+      
+      const modOsc = ctx.createOscillator();
+      const modGain = ctx.createGain();
+      modOsc.type = 'sine';
+      modOsc.frequency.value = freq * 0.5;
+      modGain.gain.value = freq * 0.5; // Modulation index
+      modOsc.connect(modGain);
+      modGain.connect(osc.frequency);
+      
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(vol, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      modOsc.start(startTime);
+      osc.start(startTime);
+      modOsc.stop(startTime + duration);
+      osc.stop(startTime + duration);
+    };
+
+    const now = ctx.currentTime;
+    if (type === 'start') {
+      playDing(800, now, 1.5, 0.4); // Single soft bell chime
+    } else {
+      playDing(700, now, 0.5, 0.3); // Double majestic chime
+      playDing(900, now + 0.2, 2.0, 0.4);
+    }
+  } catch (e) {
+    console.log('Audio error:', e);
+  }
+};
+
 export default function Timer({ user }) {
   const [routines, setRoutines] = useState([])
   const [selectedTask, setSelectedTask] = useState(null)
+  const [category, setCategory] = useState("Coding")
   const [mode, setMode] = useState('FOCUS_45')
   const [timeLeft, setTimeLeft] = useState(MODES.FOCUS_45.duration)
   const [isRunning, setIsRunning] = useState(false)
@@ -69,18 +117,19 @@ export default function Timer({ user }) {
   const handleTimerComplete = async () => {
     setIsRunning(false)
     
-    // Play a sound notification
-    try { new Audio('https://www.soundjay.com/buttons/sounds/button-09a.mp3').play() } catch(e) {}
+    // Play the stop bell notification
+    playBellSound('stop')
 
     const elapsed = MODES[mode].duration
     
     // Save session to Firestore
-    if (mode !== 'BREAK' && selectedTask) {
+    if (mode !== 'BREAK') {
       const sessionData = {
         userId: user.uid,
         userName: user.name,
-        taskId: selectedTask.id,
-        taskTitle: selectedTask.title,
+        taskId: selectedTask?.id || 'none',
+        taskTitle: selectedTask?.title || 'General Work',
+        category: category,
         mode: mode,
         duration: elapsed,
         startedAt: startTimeRef.current || new Date().toISOString(),
@@ -109,18 +158,18 @@ export default function Timer({ user }) {
   }
 
   const startTimer = async () => {
-    if (!selectedTask) {
-      alert('Please select a task first!')
-      return
-    }
+    // Play the start bell notification
+    playBellSound('start')
+    
     startTimeRef.current = new Date().toISOString()
     
     // Write active session to Firestore for admin monitoring
-    const activeRef = await doc(db, 'users', user.uid)
+    const activeRef = doc(db, 'users', user.uid)
     await updateDoc(activeRef, {
       activeSession: {
-        taskId: selectedTask.id,
-        taskTitle: selectedTask.title,
+        taskId: selectedTask?.id || 'none',
+        taskTitle: selectedTask?.title || 'General Work',
+        category: category,
         mode: mode,
         startedAt: startTimeRef.current,
         status: 'running'
@@ -164,147 +213,193 @@ export default function Timer({ user }) {
   }
 
   return (
-    <div className="max-w-3xl mx-auto animate-fade-in pb-10">
-      <div className="flex items-center gap-4 mb-8">
-        <div className={`p-3 bg-gradient-to-tr ${MODES[mode].color} rounded-2xl text-white shadow-lg`}>
-          <Clock className="w-8 h-8" />
-        </div>
+    <div className="max-w-4xl mx-auto animate-fade-in pb-10 px-4 text-slate-300">
+      
+      {/* Warning Banner */}
+      <div className="flex items-start gap-3 p-4 mb-6 bg-[#1a1400] border border-yellow-900/50 rounded-xl shadow-lg">
+        <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-yellow-500" />
         <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Focus Timer</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Stay productive with timed sessions</p>
+          <p className="text-sm font-semibold text-yellow-500">You've logged {completedSessions} sessions today.</p>
+          <p className="text-xs text-yellow-600/80 mt-1">Running timers alone doesn't build skills — completing tasks does. Your task progress is tracked and reviewed.</p>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        {[
-          { label: 'Today', value: formatTime(totalToday), icon: '⏱️' },
-          { label: 'Sessions', value: completedSessions, icon: '✅' },
-          { label: 'Mode', value: mode === 'BREAK' ? 'Break' : 'Focus', icon: mode === 'BREAK' ? '☕' : '🎯' },
-        ].map(stat => (
-          <div key={stat.label} className="glass-card p-4 text-center hover:-translate-y-1 transition-transform">
-            <div className="text-2xl mb-1">{stat.icon}</div>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">{stat.value}</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">{stat.label}</div>
+      <div className="bg-[#15171e] border border-slate-800/60 rounded-2xl p-5 sm:p-7 shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-2 text-orange-400 font-bold text-lg tracking-wide">
+            <Clock className="w-5 h-5" />
+            Time Tracker
           </div>
-        ))}
-      </div>
-
-      {/* Mode Selector */}
-      <div className="glass-card p-3 mb-6 flex gap-3">
-        {Object.entries(MODES).filter(([k]) => k !== 'BREAK').map(([key, val]) => (
-          <button
-            key={key}
-            onClick={() => selectMode(key)}
-            disabled={isRunning}
-            className={`flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all ${
-              mode === key
-                ? `bg-gradient-to-r ${val.color} text-white shadow-lg`
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            {val.label}
+          <button className="p-2.5 bg-[#1e2129] hover:bg-[#262a33] rounded-xl transition-colors text-slate-400 border border-slate-800/50">
+            <BellOff className="w-4 h-4" />
           </button>
-        ))}
-      </div>
-
-      {/* Task Selector */}
-      <div className="glass-card p-4 mb-8">
-        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-400 mb-3">
-          📋 Select Task to Focus On
-        </label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
-          {routines.length === 0 ? (
-            <p className="text-slate-500 dark:text-slate-400 text-sm col-span-2 text-center py-4">
-              No tasks found. Add routines from your Dashboard first.
-            </p>
-          ) : routines.map(r => (
-            <button
-              key={r.id}
-              onClick={() => !isRunning && setSelectedTask(r)}
-              disabled={isRunning}
-              className={`p-3 rounded-xl text-left flex items-center gap-3 transition-all ${
-                selectedTask?.id === r.id
-                  ? 'bg-blue-100 dark:bg-blue-500/20 border-2 border-blue-500 text-blue-700 dark:text-blue-300'
-                  : 'bg-slate-100 dark:bg-slate-800/50 border-2 border-transparent text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
-              } disabled:cursor-not-allowed`}
-            >
-              {selectedTask?.id === r.id
-                ? <CheckCircle2 className="w-5 h-5 shrink-0 text-blue-500" />
-                : <div className="w-5 h-5 rounded-full border-2 border-current shrink-0 opacity-40" />
-              }
-              <div className="min-w-0">
-                <div className="font-semibold text-sm truncate">{r.title}</div>
-                <div className="text-xs opacity-60">{r.time}</div>
-              </div>
-            </button>
-          ))}
         </div>
-      </div>
 
-      {/* Timer Circle */}
-      <div className="glass-card p-8 flex flex-col items-center mb-6">
-        {mode === 'BREAK' && (
-          <div className="flex items-center gap-2 mb-4 px-4 py-2 bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400 rounded-full border border-green-200 dark:border-green-500/20">
-            <Coffee className="w-4 h-4" />
-            <span className="text-sm font-semibold">Break Time — Relax!</span>
+        {/* Timer Duration Selection */}
+        <div className="mb-8">
+          <p className="text-sm text-slate-300 font-medium mb-3">Timer Duration <span className="text-slate-500 text-xs font-normal">(Pomodoro Technique - Healthy Focus Sessions)</span></p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button
+              onClick={() => selectMode('FOCUS_25')}
+              disabled={isRunning && mode !== 'FOCUS_25'}
+              className={`flex flex-col items-start justify-center p-5 rounded-xl transition-all border ${
+                mode === 'FOCUS_25' 
+                  ? 'bg-blue-600 border-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.15)]' 
+                  : 'bg-[#1e222b] border-[#2a2f3d] text-slate-400 hover:bg-[#252a36]'
+              }`}
+            >
+              <span className="text-2xl font-bold">25 min</span>
+              <span className="text-sm opacity-80 mt-1 font-medium">Classic Pomodoro</span>
+            </button>
+            <button
+              onClick={() => selectMode('FOCUS_45')}
+              disabled={isRunning && mode !== 'FOCUS_45'}
+              className={`flex flex-col items-start justify-center p-5 rounded-xl transition-all border ${
+                mode === 'FOCUS_45' 
+                  ? 'bg-blue-500 border-blue-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.3)]' 
+                  : 'bg-[#1e222b] border-[#2a2f3d] text-slate-400 hover:bg-[#252a36]'
+              }`}
+            >
+              <span className="text-2xl font-bold">45 min</span>
+              <span className="text-sm opacity-80 mt-1 font-medium">Extended Focus</span>
+            </button>
+          </div>
+          <p className="text-xs text-slate-500 mt-4 flex items-center gap-2 font-medium">
+            <span className="text-yellow-500 text-sm">💡</span> Pomodoro technique recommends max 45-minute sessions with breaks for optimal focus and health.
+          </p>
+        </div>
+
+        {/* Categories and Tasks (Only shown if NOT running) */}
+        {(!isRunning && timeLeft === MODES[mode].duration) && (
+          <div className="space-y-6 mb-8 animate-fade-in">
+            <div>
+              <label className="block text-sm text-slate-300 font-medium mb-2">Category</label>
+              <div className="relative">
+                <select 
+                  className="w-full appearance-none bg-[#111318] border border-slate-800 rounded-xl px-4 py-4 text-sm text-slate-300 focus:outline-none focus:border-blue-500/50 transition-colors cursor-pointer"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                >
+                  <option>Coding</option>
+                  <option>Writing</option>
+                  <option>Learning</option>
+                  <option>Debugging</option>
+                  <option>Research</option>
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm text-slate-300 font-medium mb-2">Link to Task <span className="text-slate-500 text-xs font-normal">(Optional)</span></label>
+              <div className="relative">
+                <select 
+                  className="w-full appearance-none bg-[#111318] border border-slate-800 rounded-xl px-4 py-4 text-sm text-slate-300 focus:outline-none focus:border-blue-500/50 transition-colors cursor-pointer"
+                  value={selectedTask?.id || ''}
+                  onChange={(e) => {
+                    const task = routines.find(r => r.id === e.target.value)
+                    setSelectedTask(task || null)
+                  }}
+                >
+                  <option value="">No task (general work)</option>
+                  {routines.map(r => (
+                    <option key={r.id} value={r.id}>{r.title}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+              </div>
+            </div>
           </div>
         )}
 
-        <div className="relative w-64 h-64 sm:w-72 sm:h-72 mb-8">
-          <svg className="w-full h-full -rotate-90" viewBox="0 0 240 240">
-            <circle cx="120" cy="120" r="110" fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeWidth="12" />
-            <circle
-              cx="120" cy="120" r="110" fill="none"
-              stroke="url(#timerGrad)" strokeWidth="12"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={circumference - (progress / 100) * circumference}
-              className="transition-all duration-1000"
-            />
-            <defs>
-              <linearGradient id="timerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor={mode === 'BREAK' ? '#10b981' : '#3b82f6'} />
-                <stop offset="100%" stopColor={mode === 'BREAK' ? '#059669' : '#6366f1'} />
-              </linearGradient>
-            </defs>
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="text-6xl sm:text-7xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
-              {minutes}:{seconds}
-            </div>
-            <div className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">{MODES[mode].label}</div>
-            {selectedTask && mode !== 'BREAK' && (
-              <div className="mt-2 px-3 py-1 bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs rounded-full max-w-[180px] truncate border border-blue-200 dark:border-blue-500/20">
-                📌 {selectedTask.title}
+        {/* Start Button Area */}
+        {!isRunning && timeLeft === MODES[mode].duration && (
+          <div className="animate-fade-in mt-2 border-t border-slate-800/60 pt-6">
+            <button 
+              onClick={startTimer}
+              className="w-full bg-slate-100 hover:bg-white text-slate-900 font-bold py-4 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-xl active:scale-[0.98]"
+            >
+              <Play className="w-5 h-5 fill-slate-900" /> Start Session
+            </button>
+            <p className="text-xs text-center text-slate-500 mt-5 font-medium flex justify-center items-center gap-1.5">
+              <span className="text-yellow-500 text-[10px]">💡</span> Keep a 2-4 minute gap between sessions to avoid rapid session violations.
+            </p>
+          </div>
+        )}
+
+        {/* Existing Active Timer Circle */}
+        {(isRunning || timeLeft < MODES[mode].duration) && (
+          <div className="mt-8 border-t border-slate-800/50 pt-10 pb-4 flex flex-col items-center animate-fade-in relative">
+            
+            {mode === 'BREAK' && (
+              <div className="absolute top-0 -mt-4 bg-[#111318] px-4 border border-green-500/30 text-green-400 rounded-full py-1.5 flex items-center gap-2 shadow-lg">
+                <Coffee className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">Break Time</span>
               </div>
             )}
+
+            <div className="relative w-64 h-64 sm:w-72 sm:h-72 mb-10">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 240 240">
+                <circle cx="120" cy="120" r="110" fill="none" stroke="currentColor" className="text-slate-800/50" strokeWidth="8" />
+                <circle
+                  cx="120" cy="120" r="110" fill="none"
+                  stroke="url(#timerGrad)" strokeWidth="12"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={circumference - (progress / 100) * circumference}
+                  className={`transition-all duration-1000 ${isRunning ? 'drop-shadow-[0_0_15px_rgba(59,130,246,0.4)]' : ''}`}
+                />
+                <defs>
+                  <linearGradient id="timerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor={mode === 'BREAK' ? '#10b981' : '#3b82f6'} />
+                    <stop offset="100%" stopColor={mode === 'BREAK' ? '#059669' : '#6366f1'} />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center transition-transform duration-700 hover:scale-[1.03]">
+                <div className={`text-6xl sm:text-7xl font-black font-mono tracking-tight transition-all duration-500 drop-shadow-sm ${isRunning ? 'text-transparent bg-clip-text bg-gradient-to-br ' + MODES[mode].color : 'text-slate-200'}`}>
+                  {minutes}:{seconds}
+                </div>
+                {selectedTask && mode !== 'BREAK' && (
+                  <div className="mt-3 px-4 py-1.5 bg-[#111318] text-slate-300 text-xs font-medium rounded-full max-w-[180px] truncate border border-slate-800 shadow-md">
+                    📌 {selectedTask.title}
+                  </div>
+                )}
+                {!selectedTask && mode !== 'BREAK' && category && (
+                  <div className="mt-3 px-4 py-1.5 bg-[#111318] text-slate-400 text-xs font-medium rounded-full max-w-[180px] truncate border border-slate-800 shadow-md">
+                    🏷️ {category}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 bg-[#111318] p-2 rounded-xl border border-slate-800 shadow-xl mt-4">
+              <button
+                onClick={resetTimer}
+                className="p-4 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all"
+              >
+                <RotateCcw className="w-5 h-5" />
+              </button>
+
+              <button
+                onClick={isRunning ? pauseTimer : startTimer}
+                className={`px-10 py-4 rounded-xl font-bold text-white text-lg bg-gradient-to-r ${MODES[mode].color} shadow-lg hover:shadow-xl hover:opacity-90 active:scale-95 transition-all flex items-center gap-2 min-w-[160px] justify-center`}
+              >
+                {isRunning ? <><Pause className="w-5 h-5" /> Pause</> : <><Play className="w-5 h-5" /> Resume</>}
+              </button>
+
+              <button
+                onClick={() => handleTimerComplete()}
+                className="p-4 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all"
+                title="Skip to end"
+              >
+                <Zap className="w-5 h-5" />
+              </button>
+            </div>
+            
           </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <button
-            onClick={resetTimer}
-            className="p-4 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-all"
-          >
-            <RotateCcw className="w-6 h-6" />
-          </button>
-
-          <button
-            onClick={isRunning ? pauseTimer : startTimer}
-            className={`px-10 py-4 rounded-2xl font-bold text-white text-lg bg-gradient-to-r ${MODES[mode].color} shadow-xl hover:opacity-90 active:scale-95 transition-all flex items-center gap-3`}
-          >
-            {isRunning ? <><Pause className="w-6 h-6" /> Pause</> : <><Play className="w-6 h-6" /> {timeLeft === MODES[mode].duration ? 'Start' : 'Resume'}</>}
-          </button>
-
-          <button
-            onClick={() => { /* Skip */ handleTimerComplete() }}
-            className="p-4 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-all"
-            title="Skip"
-          >
-            <Zap className="w-6 h-6" />
-          </button>
-        </div>
+        )}
       </div>
     </div>
   )

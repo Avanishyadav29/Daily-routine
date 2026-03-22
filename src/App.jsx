@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, Link } from 'react-router-dom'
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'firebase/auth'
 import { doc, setDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore'
 import { auth, db } from './firebase'
@@ -10,6 +10,9 @@ import Admin from './pages/Admin'
 import Timer from './pages/Timer'
 import Leaderboard from './pages/Leaderboard'
 import Inbox from './pages/Inbox'
+import Badges from './pages/Badges'
+import Feedback from './pages/Feedback'
+import AdminLogin from './pages/AdminLogin'
 import Navbar from './components/Navbar'
 
 function App() {
@@ -86,13 +89,24 @@ function App() {
   return (
     <div className="min-h-screen text-slate-900 dark:text-slate-100 transition-colors duration-300">
       <Navbar user={user} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+      {/* Username missing banner */}
+      {user && !user.username && (
+        <div className="bg-gradient-to-r from-orange-500/90 to-amber-500/90 text-white text-sm font-medium py-2.5 px-4 flex items-center justify-center gap-3 shadow-lg">
+          <span>⚠️ You haven't set a <strong>@username</strong> yet — it's required!</span>
+          <Link to="/profile" className="underline font-bold hover:text-white/80 transition-colors whitespace-nowrap">Set Username →</Link>
+        </div>
+      )}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Routes>
           <Route path="/login" element={user ? <Navigate to="/" /> : <Login onLogin={handleLogin} onSignup={handleSignup} />} />
+          {/* Admin Dedicated Login */}
+          <Route path="/admin-login" element={!user ? <AdminLogin onLogin={handleLogin} /> : <Navigate to={user.email === 'admin@daily.com' ? '/admin' : '/'} />} />
           <Route path="/" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
           <Route path="/timer" element={user ? <Timer user={user} /> : <Navigate to="/login" />} />
           <Route path="/leaderboard" element={user ? <Leaderboard user={user} /> : <Navigate to="/login" />} />
           <Route path="/inbox" element={user ? <Inbox user={user} /> : <Navigate to="/login" />} />
+          <Route path="/badges" element={user ? <Badges user={user} /> : <Navigate to="/login" />} />
+          <Route path="/feedback" element={user ? <Feedback user={user} /> : <Navigate to="/login" />} />
           <Route path="/profile" element={user ? <Profile user={user} onUpdateProfile={handleUpdateProfile} /> : <Navigate to="/login" />} />
           <Route path="/admin" element={user ? <Admin user={user} /> : <Navigate to="/login" />} />
         </Routes>

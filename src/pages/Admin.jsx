@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Users, Trash2, Shield, Activity, Ban, CheckCircle, Eye, Clock, X, AlertTriangle } from 'lucide-react'
+import { Users, Trash2, Shield, Activity, Ban, CheckCircle, Eye, Clock, X, AlertTriangle, MessageCircle, Star, MessageSquare } from 'lucide-react'
 import { Navigate } from 'react-router-dom'
 import { db } from '../firebase'
 import { collection, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore'
@@ -10,6 +10,8 @@ export default function Admin({ user }) {
   const [selectedUser, setSelectedUser] = useState(null)
   const [userSessions, setUserSessions] = useState([])
   const [loadingSessions, setLoadingSessions] = useState(false)
+  const [activeTab, setActiveTab] = useState('users') // 'users' | 'feedback'
+  const [feedbacks, setFeedbacks] = useState([])
 
   useEffect(() => {
     if (user?.email !== 'admin@daily.com') return
@@ -48,10 +50,23 @@ export default function Admin({ user }) {
     return () => unsub()
   }, [user])
 
+  // Load feedbacks
+  useEffect(() => {
+    if (user?.email !== 'admin@daily.com') return
+    const unsub = onSnapshot(collection(db, 'feedback'), (snap) => {
+      setFeedbacks(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt)))
+    })
+    return () => unsub()
+  }, [user])
+
   if (user?.email !== 'admin@daily.com') return <Navigate to="/" />
 
   const toggleBlockUser = async (uid, current) => {
     await updateDoc(doc(db, 'users', uid), { isBlocked: !current })
+  }
+
+  const toggleChatAccess = async (uid, current) => {
+    await updateDoc(doc(db, 'users', uid), { chatEnabled: !current })
   }
 
   const flagViolation = async (uid, current) => {
@@ -86,14 +101,64 @@ export default function Admin({ user }) {
   return (
     <div className="max-w-5xl mx-auto animate-fade-in pb-10">
       <div className="flex items-center gap-4 mb-8">
-        <div className="p-3 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-2xl">
+        <div className="p-3 bg-gradient-to-tr from-blue-500 to-indigo-500 text-white rounded-2xl shadow-lg">
           <Shield className="w-8 h-8" />
         </div>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Admin Dashboard</h1>
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Admin Dashboard</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Full control over the platform</p>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
+      {/* Tab Switcher */}
+      <div className="flex gap-2 mb-8 bg-slate-100 dark:bg-slate-800/40 p-1 rounded-xl w-fit">
+        <button onClick={() => setActiveTab('users')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === 'users' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+          <Users className="w-4 h-4" /> Users
+        </button>
+        <button onClick={() => setActiveTab('feedback')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === 'feedback' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+          <MessageCircle className="w-4 h-4" /> Feedback <span className="ml-1 text-xs bg-pink-500 text-white px-1.5 py-0.5 rounded-full">{feedbacks.length}</span>
+        </button>
+      </div>
+
+      {/* FEEDBACK TAB */}
+      {activeTab === 'feedback' && (
+        <div className="space-y-5">
+          {feedbacks.length === 0 ? (
+            <div className="text-center py-16 text-slate-500 dark:text-slate-400">
+              <MessageCircle className="w-12 h-12 mx-auto opacity-20 mb-3" />
+              <p>No feedback submitted yet.</p>
+            </div>
+          ) : feedbacks.map(fb => (
+            <div key={fb.id} className="bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-2xl p-5 shadow-sm hover:-translate-y-0.5 transition-transform">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <div className="font-bold text-slate-900 dark:text-white">{fb.userName} {fb.username && <span className="text-blue-400 text-xs font-medium">@{fb.username}</span>}</div>
+                  <div className="text-xs text-slate-400 mt-0.5">{fb.userEmail} · {new Date(fb.submittedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {[1,2,3,4,5].map(n => <Star key={n} className={`w-4 h-4 ${n <= fb.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300 dark:text-slate-600'}`} />)}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">{fb.category}</span>
+              </div>
+              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{fb.message}</p>
+              {fb.fileUrl && fb.fileType === 'image' && (
+                <img src={fb.fileUrl} alt="attachment" className="mt-3 rounded-xl max-h-48 object-cover cursor-pointer" onClick={() => window.open(fb.fileUrl, '_blank')} />
+              )}
+              {fb.fileUrl && fb.fileType === 'file' && (
+                <a href={fb.fileUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 text-xs text-blue-400 underline">
+                  📎 {fb.fileName}
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* USERS TAB */}
+      {activeTab === 'users' && (
+      <div>
         {[
           { label: 'Total Users', value: stats.totalUsers, icon: <Users className="w-8 h-8" />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-500/10' },
           { label: 'Total Routines', value: stats.totalRoutines, icon: <Activity className="w-8 h-8" />, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-500/10' },
@@ -126,6 +191,7 @@ export default function Admin({ user }) {
                   <th className="px-6 py-4 font-semibold">Name</th>
                   <th className="px-6 py-4 font-semibold">Email</th>
                   <th className="px-6 py-4 font-semibold">Status</th>
+                  <th className="px-6 py-4 font-semibold text-center">Chat</th>
                   <th className="px-6 py-4 font-semibold text-center">Live Activity</th>
                   <th className="px-6 py-4 font-semibold text-center">Today Focus</th>
                   <th className="px-6 py-4 font-semibold text-right">Actions</th>
@@ -167,6 +233,14 @@ export default function Admin({ user }) {
                           <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Active
                         </span>
                       )}
+                    </td>
+                    {/* Chat toggle */}
+                    <td className="px-6 py-4 text-center">
+                      <button onClick={() => toggleChatAccess(u.uid, u.chatEnabled)}
+                        title={u.chatEnabled ? 'Revoke Chat' : 'Allow Chat'}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${u.chatEnabled ? 'bg-green-500/10 text-green-500 border-green-500/30 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30' : 'bg-slate-700/30 text-slate-500 border-slate-600/30 hover:bg-green-500/10 hover:text-green-400 hover:border-green-500/30'}`}>
+                        {u.chatEnabled ? '✓ Allowed' : '🔒 Off'}
+                      </button>
                     </td>
                     <td className="px-6 py-4 text-center">
                       {u.activeSession ? (

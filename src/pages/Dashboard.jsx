@@ -8,7 +8,7 @@ import {
 
 export default function Dashboard({ user }) {
   const [routines, setRoutines] = useState([])
-  const [newRoutine, setNewRoutine] = useState({ title: '', time: '' })
+  const [newRoutine, setNewRoutine] = useState({ title: '', time: '', category: 'Coding' })
   const [isAdding, setIsAdding] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
 
@@ -31,11 +31,12 @@ export default function Dashboard({ user }) {
     await addDoc(collection(db, 'users', user.uid, 'routines'), {
       title: newRoutine.title,
       time: newRoutine.time || 'Anytime',
+      category: newRoutine.category || 'Coding',
       isCompleted: false,
       createdAt: new Date().toISOString()
     })
 
-    setNewRoutine({ title: '', time: '' })
+    setNewRoutine({ title: '', time: '', category: 'Coding' })
     setIsAdding(false)
   }
 
@@ -112,20 +113,32 @@ export default function Dashboard({ user }) {
       </div>
 
       {isAdding && (
-        <form onSubmit={handleAdd} className="glass-card p-6 mb-8 flex flex-col sm:flex-row gap-4 items-end">
-          <div className="w-full sm:flex-1">
-            <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-400">Task Name</label>
-            <input className="input-field" type="text" placeholder="E.g. Drink Water, Read Book" value={newRoutine.title} onChange={(e) => setNewRoutine({ ...newRoutine, title: e.target.value })} autoFocus />
+        <form onSubmit={handleAdd} className="glass-card p-6 mb-8 flex flex-col gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-1">
+              <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-400">Task Name</label>
+              <input className="input-field" type="text" placeholder="E.g. Drink Water, Read Book" value={newRoutine.title} onChange={(e) => setNewRoutine({ ...newRoutine, title: e.target.value })} autoFocus />
+            </div>
+            <div>
+              <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-400">Category</label>
+              <select className="input-field" value={newRoutine.category} onChange={(e) => setNewRoutine({ ...newRoutine, category: e.target.value })}>
+                <option>Coding</option>
+                <option>Writing</option>
+                <option>Learning</option>
+                <option>Debugging</option>
+                <option>Research</option>
+              </select>
+            </div>
+            <div>
+              <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-400">Time</label>
+              <input className="input-field" type="time" value={newRoutine.time} onChange={(e) => setNewRoutine({ ...newRoutine, time: e.target.value })} />
+            </div>
           </div>
-          <div className="w-full sm:w-40">
-            <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-400">Time</label>
-            <input className="input-field" type="time" value={newRoutine.time} onChange={(e) => setNewRoutine({ ...newRoutine, time: e.target.value })} />
-          </div>
-          <div className="flex gap-3 w-full sm:w-auto">
-            <button type="button" onClick={() => setIsAdding(false)} className="flex-1 sm:flex-none px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium border border-slate-300 dark:border-slate-700/50">
+          <div className="flex gap-3 justify-end">
+            <button type="button" onClick={() => setIsAdding(false)} className="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium border border-slate-300 dark:border-slate-700/50">
               Cancel
             </button>
-            <button type="submit" className="btn-primary flex-1 sm:flex-none">Save</button>
+            <button type="submit" className="btn-primary">Save Task</button>
           </div>
         </form>
       )}
@@ -156,9 +169,21 @@ export default function Dashboard({ user }) {
                   <h3 className={`text-lg font-semibold mb-1 transition-all ${item.isCompleted ? 'line-through text-slate-500' : 'text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-300'}`}>
                     {item.title}
                   </h3>
-                  <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-500">
-                    <Clock className="w-4 h-4" />
-                    <span>{item.time}</span>
+                  <div className="flex items-center gap-3 mt-1 flex-wrap">
+                    <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-500">
+                      <Clock className="w-4 h-4" />
+                      <span>{item.time}</span>
+                    </div>
+                    {item.category && (
+                      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                        item.category === 'Coding'    ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' :
+                        item.category === 'Writing'   ? 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20' :
+                        item.category === 'Learning'  ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20' :
+                        item.category === 'Debugging' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' :
+                        item.category === 'Research'  ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' :
+                                                        'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                      }`}>{item.category}</span>
+                    )}
                   </div>
                 </div>
               </div>

@@ -1,5 +1,5 @@
 import React from 'react'
-import { LogOut, Sun, Moon, Shield, User, Timer, Trophy, MessageSquare } from 'lucide-react'
+import { LogOut, Sun, Moon, Shield, User, Timer, Trophy, MessageSquare, Medal, LayoutDashboard, MessageCircle } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
 export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
@@ -9,33 +9,36 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
   if (!user) return null
 
   const navLinks = [
-    { to: '/', icon: null, label: 'Dashboard' },
+    { to: '/', icon: <LayoutDashboard className="w-4 h-4" />, label: 'Dashboard' },
     { to: '/timer', icon: <Timer className="w-4 h-4" />, label: 'Timer' },
     { to: '/leaderboard', icon: <Trophy className="w-4 h-4" />, label: 'Board' },
+    { to: '/badges', icon: <Medal className="w-4 h-4" />, label: 'Badges' },
     { to: '/inbox', icon: <MessageSquare className="w-4 h-4" />, label: 'Inbox' },
+    { to: '/feedback', icon: <MessageCircle className="w-4 h-4" />, label: 'Feedback' },
   ]
 
   return (
-    <nav className="sticky top-0 z-50 backdrop-blur-xl bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800/50 shadow-sm">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center gap-4">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 font-extrabold text-xl text-slate-900 dark:text-white shrink-0">
+    <nav className="sticky top-0 z-50 backdrop-blur-xl bg-white/80 dark:bg-[#0d0f14]/90 border-b border-slate-200 dark:border-slate-800/50 shadow-sm">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-4">
+
+        {/* Logo - Far Left */}
+        <Link to="/" className="flex items-center gap-2.5 font-extrabold text-xl text-slate-900 dark:text-white shrink-0 mr-4">
           <div className="p-1.5 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl text-white shadow">
             <Sun className="w-5 h-5" />
           </div>
           <span className="hidden sm:block">MyRoutine</span>
         </Link>
 
-        {/* Center Nav Links */}
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/50 rounded-2xl p-1 overflow-x-auto">
+        {/* Nav Links - Left side */}
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/40 rounded-2xl p-1 overflow-x-auto flex-1">
           {navLinks.map(link => (
             <Link
               key={link.to}
               to={link.to}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
                 isActive(link.to)
-                  ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? 'bg-white dark:bg-slate-700/80 text-blue-600 dark:text-blue-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/40'
               }`}
             >
               {link.icon}
@@ -44,8 +47,8 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
           ))}
         </div>
 
-        {/* Right Side */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Right Side — Actions */}
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
           <button onClick={toggleTheme} className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all" title="Toggle Theme">
             {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
@@ -63,7 +66,9 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
             ) : (
               <User className="w-4 h-4 text-indigo-600 dark:text-indigo-400 ml-1" />
             )}
-            <span className="hidden sm:inline font-medium text-sm text-slate-800 dark:text-slate-200 mr-1">{user.name.split(' ')[0]}</span>
+            <span className="hidden sm:inline font-medium text-sm text-slate-800 dark:text-slate-200 mr-1">
+              {user.username ? `@${user.username.replace(/^@/, '')}` : user.name.split(' ')[0]}
+            </span>
           </Link>
 
           <button onClick={onLogout} className="p-2 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/10 rounded-full transition-all" title="Logout">
