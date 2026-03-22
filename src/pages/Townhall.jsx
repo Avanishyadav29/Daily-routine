@@ -17,6 +17,9 @@ export default function Townhall({ user }) {
   const canDelete = isAdmin || isMod || isCoord
 
   useEffect(() => {
+    // Clear Townhall notification badge
+    localStorage.setItem('last_townhall_check', new Date().toISOString())
+    
     const q = query(collection(db, 'townhall'), orderBy('createdAt', 'asc'), limit(100))
     const unsub = onSnapshot(q, (snap) => {
       setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })))
@@ -83,6 +86,20 @@ export default function Townhall({ user }) {
     await updateDoc(doc(db, 'users', uid), { isTownhallRestricted: !isCurrentlyRestricted })
   }
 
+  const renderMessageContent = (content) => {
+    if (!content) return ''
+    const parts = content.split(/(@\w+|@everyone)/g)
+    return parts.map((part, i) => {
+      if (part === '@everyone') {
+        return <span key={i} className="bg-yellow-400/20 text-yellow-600 dark:text-yellow-400 font-black px-1.5 py-0.5 rounded-md border border-yellow-500/20 animate-pulse">@everyone</span>
+      }
+      if (part.startsWith('@')) {
+        return <span key={i} className="text-blue-500 font-bold hover:underline cursor-pointer">{part}</span>
+      }
+      return part
+    })
+  }
+
   return (
     <div className="max-w-4xl mx-auto pb-10 animate-fade-in flex flex-col" style={{ height: 'calc(100vh - 160px)' }}>
       <div className="flex items-center justify-between mb-6 bg-white dark:bg-[#15171e] p-4 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800/60">
@@ -124,7 +141,7 @@ export default function Townhall({ user }) {
                 <span className="text-[10px] text-slate-400 ml-1">{new Date(m.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
               </div>
               <div className="bg-white dark:bg-slate-800/50 p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 text-sm leading-relaxed text-slate-700 dark:text-slate-200 inline-block max-w-full break-words">
-                {m.text}
+                {renderMessageContent(m.text)}
               </div>
               
               <div className="flex items-center gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">

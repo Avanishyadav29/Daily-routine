@@ -21,7 +21,7 @@ function App() {
   const [user, setUser] = useState(null)
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [loading, setLoading] = useState(true)
-  const [unreadCounts, setUnreadCounts] = useState({ inbox: 0, announcements: 0 })
+  const [unreadCounts, setUnreadCounts] = useState({ inbox: 0, announcements: 0, townhall: 0 })
   const [isProfileIncomplete, setIsProfileIncomplete] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
@@ -66,13 +66,19 @@ function App() {
 
         // Announcements listener for badge
         const unsubAnn = onSnapshot(collection(db, 'announcements'), (snap) => {
-          // We'll compare with a local storage timestamp for real simplicity across refreshes
           const lastChecked = localStorage.getItem('last_announcement_check') || new Date(0).toISOString()
-          const novel = snap.docs.filter(d => d.data().createdAt > lastChecked && d.data().fromUid !== firebaseUser.uid).length
+          const novel = snap.docs.filter(d => (d.data().createdAt > lastChecked || !lastChecked) && d.data().fromUid !== firebaseUser.uid).length
           setUnreadCounts(prev => ({ ...prev, announcements: novel }))
         })
 
-        return () => { unsubUser(); unsubInbox(); unsubAnn() }
+        // Townhall listener for badge
+        const unsubTH = onSnapshot(collection(db, 'townhall'), (snap) => {
+          const lastTH = localStorage.getItem('last_townhall_check') || new Date(0).toISOString()
+          const novel = snap.docs.filter(d => d.data().createdAt > lastTH && d.data().fromUid !== firebaseUser.uid).length
+          setUnreadCounts(prev => ({ ...prev, townhall: novel }))
+        })
+
+        return () => { unsubUser(); unsubInbox(); unsubAnn(); unsubTH() }
       } else {
         setUser(null); setLoading(false)
       }

@@ -15,7 +15,7 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme, unread
     { to: '/badges', icon: <Medal className="w-5 h-5" />, label: 'Badges' },
     { to: '/inbox', icon: <MessageSquare className="w-5 h-5" />, label: 'Inbox', badge: unreadCounts?.inbox },
     { to: '/announcements', icon: <Megaphone className="w-5 h-5" />, label: 'Announcements', badge: unreadCounts?.announcements },
-    { to: '/townhall', icon: <MessageCircle className="w-5 h-5" />, label: 'Townhall' },
+    { to: '/townhall', icon: <MessageCircle className="w-5 h-5" />, label: 'Townhall', badge: unreadCounts?.townhall },
     ...(user.email !== 'admin@daily.com' 
       ? [{ to: '/feedback', icon: <MessageCircle className="w-5 h-5" />, label: 'Feedback' }] 
       : [{ to: '/admin', icon: <Shield className="w-5 h-5" />, label: 'Admin Dashboard' }]

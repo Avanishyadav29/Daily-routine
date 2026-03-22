@@ -18,6 +18,7 @@ export default function Admin({ user }) {
   const [showCreateUser, setShowCreateUser] = useState(false)
   const [newUserData, setNewUserData] = useState({ name: '', username: '', email: '', password: '' })
   const [creatingUser, setCreatingUser] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     if (user?.email !== 'admin@daily.com') return
@@ -159,9 +160,23 @@ export default function Admin({ user }) {
         </button>
       </div>
 
-      <div className="flex gap-2 mb-8 bg-slate-100 dark:bg-slate-800/40 p-1 rounded-xl w-fit">
-        <button onClick={() => setActiveTab('users')} className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === 'users' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}>Users</button>
-        <button onClick={() => setActiveTab('feedback')} className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === 'feedback' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}>Feedback ({feedbacks.length})</button>
+      <div className="flex flex-col sm:flex-row items-center gap-4 mb-8">
+        <div className="flex gap-2 bg-slate-100 dark:bg-slate-800/40 p-1 rounded-xl w-fit shrink-0">
+          <button onClick={() => setActiveTab('users')} className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === 'users' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}>Users</button>
+          <button onClick={() => setActiveTab('feedback')} className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === 'feedback' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}>Feedback ({feedbacks.length})</button>
+        </div>
+        
+        {activeTab === 'users' && (
+          <div className="relative flex-1 w-full max-w-sm">
+            <MessageSquare className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+              placeholder="Search user by name, email or username..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+        )}
       </div>
 
       {activeTab === 'feedback' ? (
@@ -221,7 +236,9 @@ export default function Admin({ user }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {allUsers.map(u => (
+                  {allUsers
+                    .filter(u => u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase()) || u.username?.toLowerCase().includes(searchTerm.toLowerCase()))
+                    .map(u => (
                     <tr key={u.uid} className="hover:bg-slate-50 dark:hover:bg-white/[0.01]">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -263,22 +280,86 @@ export default function Admin({ user }) {
 
       {selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg overflow-hidden">
-            <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="font-black text-xl">{selectedUser.name}</h2>
-              <button onClick={() => setSelectedUser(null)}><X /></button>
-            </div>
-            <div className="p-6 max-h-[60vh] overflow-y-auto">
-              {loadingSessions ? <p className="text-center py-10 animate-pulse">Loading sessions...</p> : (
-                <div className="space-y-3">
-                  {userSessions.map((s, i) => (
-                    <div key={i} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl flex justify-between items-center text-sm">
-                      <div>{s.taskTitle} <div className="text-[10px] text-slate-400">{new Date(s.startedAt).toLocaleString()}</div></div>
-                      <div className="font-bold text-blue-500">{formatTime(s.duration)}</div>
-                    </div>
-                  ))}
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800">
+            <div className="p-8 border-b dark:border-slate-800 flex justify-between items-start bg-slate-50 dark:bg-slate-900/50">
+              <div className="flex gap-5">
+                <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-black text-2xl shadow-lg">
+                  {selectedUser.name?.charAt(0)}
                 </div>
-              )}
+                <div>
+                  <h2 className="font-black text-2xl text-slate-900 dark:text-white leading-tight">{selectedUser.name}</h2>
+                  <p className="text-blue-500 font-bold text-sm">@{selectedUser.username || 'no-username'}</p>
+                  <p className="text-xs text-slate-400 mt-1 font-medium italic">{selectedUser.email}</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedUser(null)} className="p-2 bg-slate-200 dark:bg-slate-800 rounded-full hover:bg-red-500 hover:text-white transition-all"><X className="w-5 h-5" /></button>
+            </div>
+            
+            <div className="p-8 max-h-[60vh] overflow-y-auto space-y-6">
+              {/* Detailed Info */}
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Mobile Number</label>
+                    <div className="text-sm font-bold text-slate-700 dark:text-slate-200">{selectedUser.mobile || 'Not available'}</div>
+                 </div>
+                 <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Total Focus</label>
+                    <div className="text-sm font-bold text-blue-500">{formatTime(selectedUser.todayFocusHours)}</div>
+                 </div>
+              </div>
+
+              {/* Toggles */}
+              <div className="space-y-3">
+                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Access Control</h3>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button onClick={() => toggleBlockUser(selectedUser.uid, selectedUser.isBlocked)} className={`px-4 py-3 rounded-2xl border font-bold text-xs flex items-center justify-between transition-all ${selectedUser.isBlocked ? 'bg-red-500 text-white border-red-400 shadow-lg shadow-red-500/20' : 'bg-green-500/5 text-green-600 border-green-500/20 hover:bg-red-500/10 hover:text-red-500'}`}>
+                       <span>Blocked Status</span>
+                       {selectedUser.isBlocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                    </button>
+                    <button onClick={() => toggleChatAccess(selectedUser.uid, selectedUser.chatEnabled)} className={`px-4 py-3 rounded-2xl border font-bold text-xs flex items-center justify-between transition-all ${selectedUser.chatEnabled ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-600/20' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-indigo-500/10'}`}>
+                       <span>Inbox Permission</span>
+                       <MessageSquare className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => toggleTownhallRestriction(selectedUser.uid, selectedUser.isTownhallRestricted)} className={`px-4 py-3 rounded-2xl border font-bold text-xs flex items-center justify-between transition-all ${!selectedUser.isTownhallRestricted ? 'bg-cyan-600 text-white border-cyan-500 shadow-lg shadow-cyan-600/20' : 'bg-orange-500/5 text-orange-500 border-orange-500/20'}`}>
+                       <span>Townhall Access</span>
+                       <Activity className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => flagViolation(selectedUser.uid, selectedUser.violation)} className={`px-4 py-3 rounded-2xl border font-bold text-xs flex items-center justify-between transition-all ${selectedUser.violation ? 'bg-orange-500 text-white border-orange-400' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:text-orange-500'}`}>
+                       <span>Flag Account</span>
+                       <AlertTriangle className="w-4 h-4" />
+                    </button>
+                 </div>
+              </div>
+
+              {/* Session History */}
+              <div className="space-y-3">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <Clock className="w-3 h-3" /> Recent Sessions
+                </h3>
+                {loadingSessions ? <div className="py-8 flex justify-center"><div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div> : (
+                  <div className="space-y-2">
+                    {userSessions.slice(0, 10).map((s, i) => (
+                      <div key={i} className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl flex justify-between items-center text-xs border border-slate-100 dark:border-slate-800/50">
+                        <div>
+                           <div className="font-bold text-slate-900 dark:text-white">{s.taskTitle}</div>
+                           <div className="text-[10px] text-slate-400">{new Date(s.startedAt).toLocaleDateString()} · {new Date(s.startedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                        </div>
+                        <div className="text-right">
+                           <div className="font-black text-indigo-500">{formatTime(s.duration)}</div>
+                           <div className="text-[8px] uppercase font-black text-slate-400 tracking-widest">{s.mode}</div>
+                        </div>
+                      </div>
+                    ))}
+                    {userSessions.length === 0 && <p className="text-center py-4 text-slate-400 text-[10px] font-medium italic">No session history found.</p>}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-800 flex justify-end gap-3">
+               <button onClick={() => { deleteUser(selectedUser.uid, selectedUser.email); setSelectedUser(null); }} className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-xs flex items-center gap-2">
+                  <Trash2 className="w-4 h-4" /> Wipe & Delete Profile
+               </button>
             </div>
           </div>
         </div>
