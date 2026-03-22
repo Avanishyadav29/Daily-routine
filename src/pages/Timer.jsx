@@ -67,8 +67,18 @@ export default function Timer({ user }) {
   const [totalToday, setTotalToday] = useState(0)
   const [completedSessions, setCompletedSessions] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
   const intervalRef = useRef(null)
   const startTimeRef = useRef(null)
+
+  // Cooldown ticker
+  useEffect(() => {
+    let t;
+    if (cooldown > 0) {
+      t = setInterval(() => setCooldown(c => c - 1), 1000)
+    }
+    return () => clearInterval(t)
+  }, [cooldown])
 
   // Load user routines
   useEffect(() => {
@@ -142,20 +152,9 @@ export default function Timer({ user }) {
       await addDoc(collection(db, 'globalSessions'), sessionData)
     }
 
-    // Auto switch: focus → break → focus
-    if (mode === 'FOCUS_45' || mode === 'FOCUS_25') {
-      setMode('BREAK')
-      setTimeLeft(MODES.BREAK.duration)
-      // Auto start break
-      setTimeout(() => { 
-        setIsRunning(true)
-        startTimeRef.current = new Date().toISOString()
-      }, 500)
-    } else if (mode === 'BREAK') {
-      // After break, switch to 25min focus
-      setMode('FOCUS_25')
-      setTimeLeft(MODES.FOCUS_25.duration)
-    }
+    // After session, reset to selected mode and lock the start button for 120 seconds instead of auto-starting a break
+    setTimeLeft(MODES[mode].duration)
+    setCooldown(120)
   }
 
   const startTimer = () => {
@@ -322,9 +321,18 @@ export default function Timer({ user }) {
           <div className="animate-fade-in mt-2 border-t border-slate-200 dark:border-slate-800/60 pt-6">
             <button 
               onClick={startTimer}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900 font-bold py-4 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-xl active:scale-[0.98]"
+              disabled={cooldown > 0}
+              className={`w-full font-bold py-4 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-xl ${
+                cooldown > 0 
+                  ? 'bg-slate-300 dark:bg-slate-700 text-slate-500 cursor-not-allowed opacity-80'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900 active:scale-[0.98]'
+              }`}
             >
-              <Play className="w-5 h-5 fill-current" /> Start Session
+              {cooldown > 0 ? (
+                <>Cooldown: {Math.floor(cooldown/60)}:{(cooldown%60).toString().padStart(2, '0')}</>
+              ) : (
+                <><Play className="w-5 h-5 fill-current" /> Start Session</>
+              )}
             </button>
             <p className="text-xs text-center text-slate-500 mt-5 font-medium flex justify-center items-center gap-1.5">
               <span className="text-yellow-500 text-[10px]">💡</span> Keep a 2-4 minute gap between sessions to avoid rapid session violations.

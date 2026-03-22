@@ -15,7 +15,10 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
     { to: '/badges', icon: <Medal className="w-5 h-5" />, label: 'Badges' },
     { to: '/inbox', icon: <MessageSquare className="w-5 h-5" />, label: 'Inbox' },
     { to: '/announcements', icon: <Megaphone className="w-5 h-5" />, label: 'Announcements' },
-    ...(user.email !== 'admin@daily.com' ? [{ to: '/feedback', icon: <MessageCircle className="w-5 h-5" />, label: 'Feedback' }] : []),
+    ...(user.email !== 'admin@daily.com' 
+      ? [{ to: '/feedback', icon: <MessageCircle className="w-5 h-5" />, label: 'Feedback' }] 
+      : [{ to: '/admin', icon: <Shield className="w-5 h-5" />, label: 'Admin Dashboard' }]
+    ),
   ]
 
   const getRoleBadge = () => {
@@ -88,12 +91,6 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
             <button onClick={toggleTheme} className="p-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-all shadow-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700" title="Toggle Theme">
               {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
-
-            {user.email === 'admin@daily.com' && (
-              <Link to="/admin" className={`p-2.5 rounded-xl transition-all shadow-sm border ${isActive('/admin') ? 'bg-blue-600 text-white border-blue-500' : 'text-blue-600 bg-blue-50 dark:bg-blue-500/10 border-blue-100 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/30'}`} title="Admin Panel">
-                <Shield className="w-5 h-5" />
-              </Link>
-            )}
 
             <button onClick={onLogout} className="p-2.5 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all shadow-sm border border-transparent hover:border-red-200 dark:hover:border-red-500/30" title="Logout">
               <LogOut className="w-5 h-5" />
