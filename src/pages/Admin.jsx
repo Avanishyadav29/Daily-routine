@@ -158,8 +158,9 @@ export default function Admin({ user }) {
 
       {/* USERS TAB */}
       {activeTab === 'users' && (
-      <div>
-        {[
+      <>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
+          {[
           { label: 'Total Users', value: stats.totalUsers, icon: <Users className="w-8 h-8" />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-500/10' },
           { label: 'Total Routines', value: stats.totalRoutines, icon: <Activity className="w-8 h-8" />, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-500/10' },
           { label: 'Live Now', value: allUsers.filter(u => u.activeSession?.status === 'running').length, icon: <Clock className="w-8 h-8" />, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-500/10' },
@@ -370,6 +371,8 @@ export default function Admin({ user }) {
             </div>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   )
