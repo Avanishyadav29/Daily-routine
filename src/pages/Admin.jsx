@@ -65,6 +65,10 @@ export default function Admin({ user }) {
     await updateDoc(doc(db, 'users', uid), { isBlocked: !current })
   }
 
+  const changeRole = async (uid, newRole) => {
+    await updateDoc(doc(db, 'users', uid), { role: newRole })
+  }
+
   const toggleChatAccess = async (uid, current) => {
     await updateDoc(doc(db, 'users', uid), { chatEnabled: !current })
   }
@@ -191,6 +195,7 @@ export default function Admin({ user }) {
                 <tr className="bg-slate-100 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
                   <th className="px-6 py-4 font-semibold">Name</th>
                   <th className="px-6 py-4 font-semibold">Email</th>
+                  <th className="px-6 py-4 font-semibold">Role</th>
                   <th className="px-6 py-4 font-semibold">Status</th>
                   <th className="px-6 py-4 font-semibold text-center">Chat</th>
                   <th className="px-6 py-4 font-semibold text-center">Live Activity</th>
@@ -224,6 +229,18 @@ export default function Admin({ user }) {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm">{u.email}</td>
+                    <td className="px-6 py-4">
+                      <select 
+                        value={u.role || 'user'} 
+                        onChange={(e) => changeRole(u.uid, e.target.value)}
+                        disabled={u.uid === user?.uid}
+                        className="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-xs font-semibold px-2 py-1 cursor-pointer focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                      >
+                        <option value="user">User</option>
+                        <option value="moderator">Moderator</option>
+                        <option value="coordinator">Coordinator</option>
+                      </select>
+                    </td>
                     <td className="px-6 py-4">
                       {u.isBlocked ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20">

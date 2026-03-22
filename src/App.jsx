@@ -12,6 +12,7 @@ import Leaderboard from './pages/Leaderboard'
 import Inbox from './pages/Inbox'
 import Badges from './pages/Badges'
 import Feedback from './pages/Feedback'
+import Announcements from './pages/Announcements'
 import AdminLogin from './pages/AdminLogin'
 import Navbar from './components/Navbar'
 
@@ -39,7 +40,7 @@ function App() {
         const unsubUser = onSnapshot(userRef, (snap) => {
           const data = snap.data() || {}
           if (data.isBlocked) { signOut(auth); setUser(null); setLoading(false); return }
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: data.name || firebaseUser.displayName || (firebaseUser.email === 'admin@daily.com' ? 'Admin' : 'User'), username: data.username || (firebaseUser.email === 'admin@daily.com' ? 'admin' : ''), photo: data.photo || null, mobile: data.mobile || '', violation: data.violation || false })
+          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: data.name || firebaseUser.displayName || (firebaseUser.email === 'admin@daily.com' ? 'Admin' : 'User'), username: data.username || (firebaseUser.email === 'admin@daily.com' ? 'admin' : ''), photo: data.photo || null, mobile: data.mobile || '', violation: data.violation || false, role: data.role || 'user' })
           setLoading(false)
         }, (err) => {
           console.error("Error fetching user profile:", err)
@@ -105,6 +106,7 @@ function App() {
           <Route path="/timer" element={user ? <Timer user={user} /> : <Navigate to="/login" />} />
           <Route path="/leaderboard" element={user ? <Leaderboard user={user} /> : <Navigate to="/login" />} />
           <Route path="/inbox" element={user ? <Inbox user={user} /> : <Navigate to="/login" />} />
+          <Route path="/announcements" element={user ? <Announcements user={user} /> : <Navigate to="/login" />} />
           <Route path="/badges" element={user ? <Badges user={user} /> : <Navigate to="/login" />} />
           <Route path="/feedback" element={user ? <Feedback user={user} /> : <Navigate to="/login" />} />
           <Route path="/profile" element={user ? <Profile user={user} onUpdateProfile={handleUpdateProfile} /> : <Navigate to="/login" />} />

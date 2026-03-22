@@ -1,5 +1,5 @@
 import React from 'react'
-import { LogOut, Sun, Moon, Shield, User, Timer, Trophy, MessageSquare, Medal, LayoutDashboard, MessageCircle } from 'lucide-react'
+import { LogOut, Sun, Moon, Shield, User, Timer, Trophy, MessageSquare, Medal, LayoutDashboard, MessageCircle, Megaphone } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
 export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
@@ -14,6 +14,7 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
     { to: '/leaderboard', icon: <Trophy className="w-4 h-4" />, label: 'Board' },
     { to: '/badges', icon: <Medal className="w-4 h-4" />, label: 'Badges' },
     { to: '/inbox', icon: <MessageSquare className="w-4 h-4" />, label: 'Inbox' },
+    { to: '/announcements', icon: <Megaphone className="w-4 h-4" />, label: 'Announcements' },
     { to: '/feedback', icon: <MessageCircle className="w-4 h-4" />, label: 'Feedback' },
   ]
 
