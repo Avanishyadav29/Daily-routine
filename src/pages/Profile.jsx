@@ -6,7 +6,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { updatePassword } from 'firebase/auth'
 
-export default function Profile({ user, onUpdateProfile }) {
+export default function Profile({ user, onUpdateProfile, setupMode }) {
   const rawUsername = (user.username || '').replace(/^@/, '')
   const [profileData, setProfileData] = useState({
     name: user.name,
@@ -148,6 +148,16 @@ export default function Profile({ user, onUpdateProfile }) {
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in pb-10 mt-8">
+      {setupMode && (
+        <div className="mb-8 p-6 bg-blue-500/10 border border-blue-500/30 rounded-[2rem] animate-pulse">
+           <h2 className="text-xl font-black text-blue-500 flex items-center gap-2 mb-2">
+             <User className="w-6 h-6" /> Welcome Back!
+           </h2>
+           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+             It looks like your profile data was reset. Please re-enter your name and pick a username to continue using MyRoutine.
+           </p>
+        </div>
+      )}
       <div className="flex items-center gap-4 mb-8">
         <div className="p-3 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
           <User className="w-8 h-8" />

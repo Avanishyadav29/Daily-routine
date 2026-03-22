@@ -22,6 +22,7 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [loading, setLoading] = useState(true)
   const [unreadCounts, setUnreadCounts] = useState({ inbox: 0, announcements: 0 })
+  const [isProfileIncomplete, setIsProfileIncomplete] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -41,9 +42,16 @@ function App() {
       if (firebaseUser) {
         const userRef = doc(db, 'users', firebaseUser.uid)
         const unsubUser = onSnapshot(userRef, (snap) => {
-          const data = snap.data() || {}
+          const data = snap.data()
+          if (!data || !data.name || !data.username) {
+            setIsProfileIncomplete(true)
+            setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: 'New User', username: '', photo: '', isBlocked: false, role: 'user' })
+            setLoading(false)
+            return
+          }
           if (data.isBlocked) { signOut(auth); setUser(null); setLoading(false); return }
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: data.name || firebaseUser.displayName || (firebaseUser.email === 'admin@daily.com' ? 'Admin' : 'User'), username: data.username || (firebaseUser.email === 'admin@daily.com' ? 'admin' : ''), photo: data.photo || null, mobile: data.mobile || '', violation: data.violation || false, role: firebaseUser.email === 'admin@daily.com' ? 'admin' : (data.role || 'user'), lastSeenAnnouncement: data.lastSeenAnnouncement || '' })
+          setIsProfileIncomplete(false)
+          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: data.name || firebaseUser.displayName || (firebaseUser.email === 'admin@daily.com' ? 'Admin' : 'User'), username: data.username || '', photo: data.photo || null, mobile: data.mobile || '', violation: data.violation || false, role: firebaseUser.email === 'admin@daily.com' ? 'admin' : (data.role || 'user'), lastSeenAnnouncement: data.lastSeenAnnouncement || '' })
           setLoading(false)
         }, (err) => {
           console.error("Error fetching user profile:", err)
@@ -142,10 +150,12 @@ function App() {
             <Route path="/townhall" element={user ? <Townhall user={user} /> : <Navigate to="/login" />} />
             <Route path="/badges" element={user ? <Badges user={user} /> : <Navigate to="/login" />} />
             <Route path="/feedback" element={user ? <Feedback user={user} /> : <Navigate to="/login" />} />
-            <Route path="/profile" element={user ? <Profile user={user} onUpdateProfile={handleUpdateProfile} /> : <Navigate to="/login" />} />
+            <Route path="/profile" element={user ? <Profile user={user} onUpdateProfile={handleUpdateProfile} setupMode={isProfileIncomplete} /> : <Navigate to="/login" />} />
             <Route path="/admin" element={user ? <Admin user={user} /> : <Navigate to="/login" />} />
+            <Route path="*" element={<Navigate to={isProfileIncomplete ? "/profile" : "/"} />} />
           </Routes>
         </div>
+        {user && isProfileIncomplete && location.pathname !== '/profile' && <Navigate to="/profile" replace />}
       </main>
     </div>
   )

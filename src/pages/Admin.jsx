@@ -203,7 +203,13 @@ export default function Admin({ user }) {
           </div>
 
           <div className="glass-card p-0 overflow-hidden border border-slate-200 dark:border-slate-800">
-            <div className="overflow-x-auto">
+          <div className="p-4 bg-amber-500/5 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
+             <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+             <p className="text-[10px] sm:text-[11px] text-amber-600 dark:text-amber-500 font-bold uppercase tracking-tight">
+               Important: Deleting here only removes routines/data. To fully delete a user (allowing re-signup), you must remove them from the "Authentication" tab in Firebase Console.
+             </p>
+          </div>
+          <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse whitespace-nowrap">
                 <thead className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase text-slate-500">
                   <tr>
