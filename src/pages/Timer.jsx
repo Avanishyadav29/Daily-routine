@@ -158,13 +158,14 @@ export default function Timer({ user }) {
     }
   }
 
-  const startTimer = async () => {
+  const startTimer = () => {
     if (!isMuted) playBellSound('start')
     startTimeRef.current = new Date().toISOString()
+    setIsRunning(true)
     
     try {
       const activeRef = doc(db, 'users', user.uid)
-      await updateDoc(activeRef, {
+      updateDoc(activeRef, {
         activeSession: {
           taskId: selectedTask?.id || 'none',
           taskTitle: selectedTask?.title || 'General Work',
@@ -173,26 +174,24 @@ export default function Timer({ user }) {
           startedAt: startTimeRef.current,
           status: 'running'
         }
-      })
-    } catch (err) { console.error("Active session sync failed:", err) }
-    
-    setIsRunning(true)
-  }
-
-  const pauseTimer = async () => {
-    setIsRunning(false)
-    try {
-      const activeRef = doc(db, 'users', user.uid)
-      await updateDoc(activeRef, { 'activeSession.status': 'paused' })
+      }).catch(err => console.warn("Background sync failed:", err))
     } catch (err) {}
   }
 
-  const resetTimer = async () => {
+  const pauseTimer = () => {
+    setIsRunning(false)
+    try {
+      const activeRef = doc(db, 'users', user.uid)
+      updateDoc(activeRef, { 'activeSession.status': 'paused' }).catch(() => {})
+    } catch (err) {}
+  }
+
+  const resetTimer = () => {
     setIsRunning(false)
     setTimeLeft(MODES[mode].duration)
     try {
       const activeRef = doc(db, 'users', user.uid)
-      await updateDoc(activeRef, { activeSession: null })
+      updateDoc(activeRef, { activeSession: null }).catch(() => {})
     } catch (err) {}
   }
 

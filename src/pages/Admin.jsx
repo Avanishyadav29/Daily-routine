@@ -21,22 +21,26 @@ export default function Admin({ user }) {
       let totalRoutines = 0
       const usersWithStats = await Promise.all(
         usersSnap.docs.map(async (userDoc) => {
-          const data = userDoc.data()
-          const routinesSnap = await getDocs(collection(db, 'users', userDoc.id, 'routines'))
-          totalRoutines += routinesSnap.size
+          let routinesSize = 0, todaySecs = 0
+          try {
+            const routinesSnap = await getDocs(collection(db, 'users', userDoc.id, 'routines'))
+            routinesSize = routinesSnap.size
+            totalRoutines += routinesSize
 
-          // today's focus time
-          const sessionsSnap = await getDocs(collection(db, 'users', userDoc.id, 'sessions'))
-          const today = new Date().toDateString()
-          const todaySecs = sessionsSnap.docs
-            .map(d => d.data())
-            .filter(s => new Date(s.startedAt).toDateString() === today && s.completed)
-            .reduce((a, s) => a + (s.duration || 0), 0)
+            const sessionsSnap = await getDocs(collection(db, 'users', userDoc.id, 'sessions'))
+            const today = new Date().toDateString()
+            todaySecs = sessionsSnap.docs
+              .map(d => d.data())
+              .filter(s => new Date(s.startedAt).toDateString() === today && s.completed)
+              .reduce((a, s) => a + (s.duration || 0), 0)
+          } catch (err) {
+            console.warn("Could not fetch stats for user", userDoc.id, err)
+          }
 
           return {
             uid: userDoc.id,
             ...data,
-            routinesCount: routinesSnap.size,
+            routinesCount: routinesSize,
             todayFocusHours: todaySecs,
           }
         })
@@ -230,16 +234,19 @@ export default function Admin({ user }) {
                     </td>
                     <td className="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm">{u.email}</td>
                     <td className="px-6 py-4">
-                      <select 
-                        value={u.role || 'user'} 
-                        onChange={(e) => changeRole(u.uid, e.target.value)}
-                        disabled={u.uid === user?.uid}
-                        className="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-xs font-semibold px-2 py-1 cursor-pointer focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                      >
-                        <option value="user">User</option>
-                        <option value="moderator">Moderator</option>
-                        <option value="coordinator">Coordinator</option>
-                      </select>
+                      {u.email === 'admin@daily.com' || u.role === 'admin' ? (
+                        <span className="px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 rounded-full text-xs font-bold uppercase tracking-widest border border-blue-200 dark:border-blue-500/30">Admin</span>
+                      ) : (
+                        <select 
+                          value={u.role || 'user'} 
+                          onChange={(e) => changeRole(u.uid, e.target.value)}
+                          className="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-xs font-semibold px-2 py-1 cursor-pointer focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="user">User</option>
+                          <option value="moderator">Moderator</option>
+                          <option value="coordinator">Coordinator</option>
+                        </select>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       {u.isBlocked ? (
