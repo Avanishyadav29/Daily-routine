@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Play, Pause, RotateCcw, Coffee, Zap, CheckCircle2, Clock, AlertTriangle, BellOff, ChevronDown } from 'lucide-react'
+import { Play, Pause, RotateCcw, Coffee, Zap, CheckCircle2, Clock, AlertTriangle, BellOff, Bell, ChevronDown, Square } from 'lucide-react'
 import { db } from '../firebase'
 import { collection, addDoc, doc, updateDoc, onSnapshot, query, orderBy } from 'firebase/firestore'
 
@@ -66,6 +66,7 @@ export default function Timer({ user }) {
   const [sessionId, setSessionId] = useState(null)
   const [totalToday, setTotalToday] = useState(0)
   const [completedSessions, setCompletedSessions] = useState(0)
+  const [isMuted, setIsMuted] = useState(false)
   const intervalRef = useRef(null)
   const startTimeRef = useRef(null)
 
@@ -118,7 +119,7 @@ export default function Timer({ user }) {
     setIsRunning(false)
     
     // Play the stop bell notification
-    playBellSound('stop')
+    if (!isMuted) playBellSound('stop')
 
     const elapsed = MODES[mode].duration
     
@@ -158,7 +159,7 @@ export default function Timer({ user }) {
   }
 
   const startTimer = async () => {
-    playBellSound('start')
+    if (!isMuted) playBellSound('start')
     startTimeRef.current = new Date().toISOString()
     
     try {
@@ -232,14 +233,17 @@ export default function Timer({ user }) {
             <Clock className="w-5 h-5" />
             Time Tracker
           </div>
-          <button className="p-2.5 bg-slate-100 dark:bg-[#1e2129] hover:bg-slate-200 dark:hover:bg-[#262a33] rounded-xl transition-colors text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800/50">
-            <BellOff className="w-4 h-4" />
+          <button onClick={() => setIsMuted(!isMuted)} className={`p-2.5 rounded-xl transition-colors text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800/50 ${isMuted ? 'bg-orange-500/10 text-orange-500 border-orange-500/30' : 'bg-slate-100 dark:bg-[#1e2129] hover:bg-slate-200 dark:hover:bg-[#262a33]'}`}>
+            {isMuted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
           </button>
         </div>
 
-        {/* Timer Duration Selection */}
-        <div className="mb-8">
-          <p className="text-sm text-slate-700 dark:text-slate-300 font-medium mb-3">Timer Duration <span className="text-slate-500 text-xs font-normal">(Pomodoro Technique - Healthy Focus Sessions)</span></p>
+        {/* Setup Controls (Hidden during session) */}
+        {(!isRunning && timeLeft === MODES[mode].duration) && (
+          <div className="animate-fade-in">
+            {/* Timer Duration Selection */}
+            <div className="mb-8">
+              <p className="text-sm text-slate-700 dark:text-slate-300 font-medium mb-3">Timer Duration <span className="text-slate-500 text-xs font-normal">(Pomodoro Technique - Healthy Focus Sessions)</span></p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
               onClick={() => selectMode('FOCUS_25')}
@@ -266,10 +270,10 @@ export default function Timer({ user }) {
               <span className="text-sm opacity-80 mt-1 font-medium">Extended Focus</span>
             </button>
           </div>
-          <p className="text-xs text-slate-500 mt-4 flex items-center gap-2 font-medium">
-            <span className="text-yellow-500 text-sm">💡</span> Pomodoro technique recommends max 45-minute sessions with breaks for optimal focus and health.
-          </p>
-        </div>
+              <p className="text-xs text-slate-500 mt-4 flex items-center gap-2 font-medium">
+                <span className="text-yellow-500 text-sm">💡</span> Pomodoro technique recommends max 45-minute sessions with breaks for optimal focus and health.
+              </p>
+            </div>
 
         {/* Categories and Tasks (Only shown if NOT running) */}
         {(!isRunning && timeLeft === MODES[mode].duration) && (
@@ -329,76 +333,71 @@ export default function Timer({ user }) {
           </div>
         )}
 
-        {/* Existing Active Timer Circle */}
+        {/* Active Timer UI */}
         {(isRunning || timeLeft < MODES[mode].duration) && (
-          <div className="mt-8 border-t border-slate-800/50 pt-10 pb-4 flex flex-col items-center animate-fade-in relative">
+          <div className="animate-fade-in flex flex-col items-center">
+            
+            {/* Minimal Category Pill */}
+            {mode !== 'BREAK' && (
+              <div className="w-full bg-slate-100 dark:bg-[#181b24] py-3 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center shadow-sm mb-12">
+                <div className="flex items-center gap-2 text-sm font-bold text-blue-600 dark:text-blue-400 tracking-wider uppercase">
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  {category || selectedTask?.title || 'CODING'}
+                </div>
+              </div>
+            )}
             
             {mode === 'BREAK' && (
-              <div className="absolute top-0 -mt-4 bg-white dark:bg-[#111318] px-4 border border-green-300 dark:border-green-500/30 text-green-500 dark:text-green-400 rounded-full py-1.5 flex items-center gap-2 shadow-lg">
-                <Coffee className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">Break Time</span>
+              <div className="w-full bg-green-50 dark:bg-[#064e3b]/20 py-3 rounded-xl border border-green-200 dark:border-green-500/30 flex items-center justify-center shadow-sm mb-12">
+                <div className="flex items-center gap-2 text-sm font-bold text-green-600 dark:text-green-400 tracking-wider uppercase">
+                  <Coffee className="w-4 h-4" /> Break Time
+                </div>
               </div>
             )}
 
-            <div className="relative w-64 h-64 sm:w-72 sm:h-72 mb-10">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 240 240">
-                <circle cx="120" cy="120" r="110" fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-800/50" strokeWidth="8" />
+            <div className="relative w-64 h-64 sm:w-80 sm:h-80 mb-12 flex justify-center items-center">
+              <svg className="w-full h-full -rotate-90 absolute inset-0 drop-shadow-2xl" viewBox="0 0 240 240">
+                <circle cx="120" cy="120" r="110" fill="none" stroke="currentColor" className="text-slate-100 dark:text-[#1e222d]" strokeWidth="8" />
                 <circle
                   cx="120" cy="120" r="110" fill="none"
                   stroke="url(#timerGrad)" strokeWidth="12"
                   strokeLinecap="round"
                   strokeDasharray={circumference}
                   strokeDashoffset={circumference - (progress / 100) * circumference}
-                  className={`transition-all duration-1000 ${isRunning ? 'drop-shadow-[0_0_15px_rgba(59,130,246,0.4)]' : ''}`}
+                  className={`transition-all duration-1000 ${isRunning ? 'drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]' : ''}`}
                 />
                 <defs>
                   <linearGradient id="timerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" stopColor={mode === 'BREAK' ? '#10b981' : '#3b82f6'} />
-                    <stop offset="100%" stopColor={mode === 'BREAK' ? '#059669' : '#6366f1'} />
+                    <stop offset="100%" stopColor={mode === 'BREAK' ? '#34d399' : '#60a5fa'} />
                   </linearGradient>
                 </defs>
               </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center transition-transform duration-700 hover:scale-[1.03]">
-                <div className={`text-6xl sm:text-7xl font-black font-mono tracking-tight transition-all duration-500 drop-shadow-sm ${isRunning ? 'text-transparent bg-clip-text bg-gradient-to-br ' + MODES[mode].color : 'text-slate-800 dark:text-slate-200'}`}>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                <div className={`text-5xl sm:text-6xl font-black font-mono tracking-tighter ${isRunning ? 'text-blue-600 dark:text-blue-400' : 'text-slate-800 dark:text-slate-200'}`}>
                   {minutes}:{seconds}
                 </div>
-                {selectedTask && mode !== 'BREAK' && (
-                  <div className="mt-3 px-4 py-1.5 bg-white dark:bg-[#111318] text-slate-700 dark:text-slate-300 text-xs font-medium rounded-full max-w-[180px] truncate border border-slate-200 dark:border-slate-800 shadow-md">
-                    📌 {selectedTask.title}
-                  </div>
-                )}
-                {!selectedTask && mode !== 'BREAK' && category && (
-                  <div className="mt-3 px-4 py-1.5 bg-white dark:bg-[#111318] text-slate-500 dark:text-slate-400 text-xs font-medium rounded-full max-w-[180px] truncate border border-slate-200 dark:border-slate-800 shadow-md">
-                    🏷️ {category}
-                  </div>
-                )}
+                <div className="mt-2 text-xs font-bold tracking-widest text-slate-400 uppercase">
+                  {mode.replace(/_.*/, '')}
+                </div>
+                <div className="mt-1 text-sm font-bold text-blue-500">
+                  {Math.round(progress)}%
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-4 bg-white dark:bg-[#111318] p-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl mt-4">
-              <button
-                onClick={resetTimer}
-                className="p-4 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
-              >
-                <RotateCcw className="w-5 h-5" />
-              </button>
-
-              <button
-                onClick={isRunning ? pauseTimer : startTimer}
-                className={`px-10 py-4 rounded-xl font-bold text-white text-lg bg-gradient-to-r ${MODES[mode].color} shadow-lg hover:shadow-xl hover:opacity-90 active:scale-95 transition-all flex items-center gap-2 min-w-[160px] justify-center`}
-              >
-                {isRunning ? <><Pause className="w-5 h-5" /> Pause</> : <><Play className="w-5 h-5" /> Resume</>}
-              </button>
-
+            <div className="w-full">
               <button
                 onClick={() => handleTimerComplete()}
-                className="p-4 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
-                title="Skip to end"
+                className="w-full py-4 rounded-xl font-bold text-white text-sm bg-red-500 hover:bg-red-600 active:scale-[0.99] transition-all flex items-center gap-2 justify-center shadow-[0_0_15px_rgba(239,68,68,0.3)]"
               >
-                <Zap className="w-5 h-5" />
+                <Square className="w-4 h-4 fill-current" /> End Session
               </button>
             </div>
             
+          </div>
+        )}
+
           </div>
         )}
       </div>
