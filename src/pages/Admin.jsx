@@ -40,7 +40,7 @@ export default function Admin({ user }) {
         // Optional: calculate total routines if needed, but for now let's keep it simple
         setStats(prev => ({ 
           ...prev, 
-          totalRoutines: allUsers.reduce((acc, u) => acc + (u.routinesCount || 0), acc) 
+          totalRoutines: allUsers.reduce((acc, u) => acc + (u.routinesCount || 0), 0) 
         }))
       } catch (err) {}
     }
