@@ -3,7 +3,7 @@ import { MessageSquare, Send, Trash2, Ban, ShieldAlert, X, AlertTriangle, Shield
 import { db } from '../firebase'
 import { collection, addDoc, onSnapshot, query, orderBy, limit, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore'
 
-const BAD_WORDS = ['gaali1', 'gaali2', 'badword', 'fool'] // Placeholder for real list
+const BAD_WORDS = ['gaali', 'harami', 'kamina', 'saala', 'bewakoof', 'chutiya', 'madarchod', 'behenchod']
 
 export default function Townhall({ user }) {
   const [messages, setMessages] = useState([])
@@ -40,26 +40,32 @@ export default function Townhall({ user }) {
     const hasBadWord = BAD_WORDS.some(word => msgText.toLowerCase().includes(word.toLowerCase()))
     
     if (hasBadWord) {
-      alert("⚠️ Bad words detected! This is your warning. Repeating this will result in an automatic account block.")
-      
       const userRef = doc(db, 'users', user.uid)
       const userSnap = await getDoc(userRef)
       const data = userSnap.data() || {}
       
       const currentWarnings = data.warningsCount || 0
-      if (currentWarnings >= 1) {
-        await updateDoc(userRef, { isBlocked: true, blockReason: 'Auto-blocked for multiple bad word violations in Townhall' })
+      if (currentWarnings >= 2) {
+        await updateDoc(userRef, { 
+          isBlocked: true, 
+          violation: true,
+          blockReason: 'Auto-blocked for multiple bad word violations in Townhall' 
+        })
         alert("CRITICAL: Your account has been automatically blocked due to repeated violations.")
         window.location.reload()
       } else {
-        await updateDoc(userRef, { warningsCount: currentWarnings + 1 })
+        await updateDoc(userRef, { 
+          warningsCount: currentWarnings + 1, 
+          violation: true 
+        })
+        alert(`⚠️ Warning #${currentWarnings + 1}: Bad words detected! Repeating this will result in an account block.`)
       }
       setText('')
       return
     }
 
     if (user.isTownhallRestricted) {
-      alert("You have been restricted from posting in the Townhall by Admin.")
+      alert("Admin has restricted your Townhall access! You cannot send messages.")
       return
     }
 

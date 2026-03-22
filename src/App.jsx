@@ -51,7 +51,14 @@ function App() {
           }
           if (data.isBlocked) { signOut(auth); setUser(null); setLoading(false); return }
           setIsProfileIncomplete(false)
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: data.name || firebaseUser.displayName || (firebaseUser.email === 'admin@daily.com' ? 'Admin' : 'User'), username: data.username || '', photo: data.photo || null, mobile: data.mobile || '', violation: data.violation || false, role: firebaseUser.email === 'admin@daily.com' ? 'admin' : (data.role || 'user'), lastSeenAnnouncement: data.lastSeenAnnouncement || '' })
+          setUser({ 
+            uid: firebaseUser.uid, 
+            email: firebaseUser.email, 
+            ...data,
+            name: data.name || (firebaseUser.email === 'admin@daily.com' ? 'Admin' : 'User'),
+            username: data.username || '',
+            role: firebaseUser.email === 'admin@daily.com' ? 'admin' : (data.role || 'user')
+          })
           setLoading(false)
         }, (err) => {
           console.error("Error fetching user profile:", err)
