@@ -36,7 +36,7 @@ function App() {
         const unsubUser = onSnapshot(userRef, (snap) => {
           const data = snap.data() || {}
           if (data.isBlocked) { signOut(auth); setUser(null); setLoading(false); return }
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: data.name || firebaseUser.displayName || 'User', photo: data.photo || null, mobile: data.mobile || '', violation: data.violation || false })
+          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: data.name || firebaseUser.displayName || 'User', username: data.username || '', photo: data.photo || null, mobile: data.mobile || '', violation: data.violation || false })
           setLoading(false)
         })
         return () => unsubUser()
@@ -52,10 +52,10 @@ function App() {
     navigate('/')
   }
 
-  const handleSignup = async (email, password, name, mobile) => {
+  const handleSignup = async (email, password, name, mobile, username) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(cred.user, { displayName: name })
-    await setDoc(doc(db, 'users', cred.user.uid), { name, email, mobile: mobile || '', photo: '', isBlocked: false, violation: false, createdAt: new Date().toISOString() })
+    await setDoc(doc(db, 'users', cred.user.uid), { name, username: username || '', email, mobile: mobile || '', photo: '', isBlocked: false, violation: false, createdAt: new Date().toISOString() })
     navigate('/')
   }
 

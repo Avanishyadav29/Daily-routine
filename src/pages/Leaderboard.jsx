@@ -30,6 +30,7 @@ export default function Leaderboard({ user }) {
           return {
             uid: u.uid,
             name: u.name || 'Unknown',
+            username: u.username || '',
             photo: u.photo || null,
             email: u.email || '',
             todaySecs,
@@ -168,7 +169,10 @@ export default function Leaderboard({ user }) {
                     {u.name} {u.uid === user.uid && <span className="text-xs bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full">You</span>}
                     {u.activeSession && <span className="flex items-center gap-1 text-xs bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full border border-green-200 dark:border-green-500/20 animate-pulse"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Live</span>}
                   </div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400">{u.todaySessions} sessions today · {formatTime(u.totalSecs)} all-time</div>
+                  <div className="text-sm text-slate-500 dark:text-slate-400">
+                    {u.username ? <span className="text-blue-500 font-medium mr-2">@{u.username}</span> : null}
+                    {u.todaySessions} sessions today · {formatTime(u.totalSecs)} all-time
+                  </div>
                 </div>
 
                 <div className="text-right">

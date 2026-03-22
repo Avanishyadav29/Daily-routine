@@ -1,0 +1,9 @@
+{
+  "name": "daily-routine-avanish",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -4,7 +4,7 @@ import { storage } from '../firebase'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
 export default function Profile({ user, onUpdateProfile }) {
-  const [profileData, setProfileData] = useState({ name: user.name, photo: user.photo || '', mobile: user.mobile || '' })
+  const [profileData, setProfileData] = useState({ name: user.name, username: user.username || '', photo: user.photo || '', mobile: user.mobile || '' })
   const [message, setMessage] = useState('')
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef(null)
@@ -28,7 +28,7 @@ export default function Profile({ user, onUpdateProfile }) {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault()
-    await onUpdateProfile({ name: profileData.name, photo: profileData.photo, mobile: profileData.mobile })
+    await onUpdateProfile({ name: profileData.name, username: profileData.username, photo: profileData.photo, mobile: profileData.mobile })
     setMessage('Profile updated successfully! ✅')
     setTimeout(() => setMessage(''), 3000)
   }
@@ -80,6 +80,10 @@ export default function Profile({ user, onUpdateProfile }) {
               <div>
                 <label className="block mb-2 text-sm font-semibold text-slate-700 dark:text-slate-400">Full Name</label>
                 <input type="text" className="input-field" value={profileData.name} onChange={e => setProfileData({ ...profileData, name: e.target.value })} placeholder="Enter your name" required />
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-semibold text-slate-700 dark:text-slate-400">Username</label>
+                <input type="text" className="input-field" value={profileData.username} onChange={e => setProfileData({ ...profileData, username: e.target.value })} placeholder="Enter your username" />
               </div>
               <div>
                 <label className="block mb-2 text-sm font-semibold text-slate-700 dark:text-slate-400">Mobile Number</label>

@@ -145,7 +145,11 @@ export default function Admin({ user }) {
                             {u.name}
                             {u.violation && <AlertTriangle className="w-4 h-4 text-red-500" title="Violation flagged" />}
                           </div>
-                          <div className="text-xs text-slate-500">{u.mobile || ''}</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            {u.username ? <span className="font-medium text-blue-500">@{u.username}</span> : null}
+                            {u.username && u.mobile ? ' · ' : ''}
+                            {u.mobile}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -217,7 +221,10 @@ export default function Admin({ user }) {
                   </div>
                 )}
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">{selectedUser.name}</h2>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    {selectedUser.name}
+                    {selectedUser.username && <span className="text-sm font-medium text-blue-500 bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 rounded-full">@{selectedUser.username}</span>}
+                  </h2>
                   <p className="text-sm text-slate-500">{selectedUser.email} · {selectedUser.mobile || 'No mobile'}</p>
                 </div>
               </div>

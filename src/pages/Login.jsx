@@ -5,7 +5,7 @@ const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
 export default function Login({ onLogin, onSignup }) {
   const [isLogin, setIsLogin] = useState(true)
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', mobile: '' })
+  const [formData, setFormData] = useState({ name: '', username: '', email: '', password: '', mobile: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
@@ -30,6 +30,7 @@ export default function Login({ onLogin, onSignup }) {
 
     if (!isLogin) {
       if (!formData.name.trim()) { setError('Please enter your name'); return }
+      if (!formData.username.trim()) { setError('Please enter a username'); return }
       if (!formData.mobile.trim()) { setError('Please enter your mobile number'); return }
       if (formData.password.length < 4) { setError('Password must be at least 4 characters'); return }
     }
@@ -39,7 +40,7 @@ export default function Login({ onLogin, onSignup }) {
       if (isLogin) {
         await onLogin(formData.email, formData.password)
       } else {
-        await onSignup(formData.email, formData.password, formData.name, formData.mobile)
+        await onSignup(formData.email, formData.password, formData.name, formData.mobile, formData.username)
       }
     } catch (err) {
       const msg = err.code
@@ -87,6 +88,10 @@ export default function Login({ onLogin, onSignup }) {
                 <input className="input-field" type="text" name="name" placeholder="John Doe" value={formData.name} onChange={handleChange} />
               </div>
               <div>
+                <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-400">Username</label>
+                <input className="input-field" type="text" name="username" placeholder="johndoe123" value={formData.username} onChange={handleChange} />
+              </div>
+              <div>
                 <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-400">Mobile Number</label>
                 <input className="input-field" type="tel" name="mobile" placeholder="+91 9876543210" value={formData.mobile} onChange={handleChange} />
               </div>
@@ -123,7 +128,7 @@ export default function Login({ onLogin, onSignup }) {
           </span>
           <button
             type="button"
-            onClick={() => { setIsLogin(!isLogin); setError(''); setFormData({ name: '', email: '', password: '', mobile: '' }) }}
+            onClick={() => { setIsLogin(!isLogin); setError(''); setFormData({ name: '', username: '', email: '', password: '', mobile: '' }) }}
             className="text-blue-600 dark:text-blue-400 font-semibold hover:underline transition-colors"
           >
             {isLogin ? 'Sign up' : 'Log in'}
