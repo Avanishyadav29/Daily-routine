@@ -39,7 +39,7 @@ function App() {
         const unsubUser = onSnapshot(userRef, (snap) => {
           const data = snap.data() || {}
           if (data.isBlocked) { signOut(auth); setUser(null); setLoading(false); return }
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: data.name || firebaseUser.displayName || 'User', username: data.username || '', photo: data.photo || null, mobile: data.mobile || '', violation: data.violation || false })
+          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: data.name || firebaseUser.displayName || (firebaseUser.email === 'admin@daily.com' ? 'Admin' : 'User'), username: data.username || (firebaseUser.email === 'admin@daily.com' ? 'admin' : ''), photo: data.photo || null, mobile: data.mobile || '', violation: data.violation || false })
           setLoading(false)
         }, (err) => {
           console.error("Error fetching user profile:", err)
@@ -67,7 +67,7 @@ function App() {
 
   const handleUpdateProfile = async (updatedData) => {
     if (!user) return
-    await updateDoc(doc(db, 'users', user.uid), updatedData)
+    await setDoc(doc(db, 'users', user.uid), updatedData, { merge: true })
     setUser(prev => ({ ...prev, ...updatedData }))
   }
 
