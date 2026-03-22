@@ -70,7 +70,7 @@ function App() {
   const handleUpdateProfile = async (updatedData) => {
     if (!user) return
     await setDoc(doc(db, 'users', user.uid), updatedData, { merge: true })
-    setUser(prev => ({ ...prev, ...updatedData }))
+    // Removed redundant setUser - onSnapshot handles real-time sync
   }
 
   const handleLogout = async () => {
