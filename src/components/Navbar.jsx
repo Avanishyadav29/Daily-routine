@@ -67,8 +67,14 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
         </div>
 
         {/* Sidebar Footer (Profile & Actions) */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/20">
-          <Link to="/profile" className="flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all mb-4 group cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/20 flex flex-col gap-3">
+          
+          <button onClick={toggleTheme} className="w-full flex items-center justify-center gap-2 py-3 px-4 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-200/50 dark:bg-[#1a1c23] hover:bg-slate-200 dark:hover:bg-[#252833] rounded-xl transition-all font-semibold text-sm border border-slate-300 dark:border-slate-700/50">
+            {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+          </button>
+
+          <Link to="/profile" className="flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all group cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
             {user.photo ? (
               <img src={user.photo} alt="User" className="w-10 h-10 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0" />
             ) : (
@@ -87,15 +93,9 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme }) {
             </div>
           </Link>
 
-          <div className="flex items-center justify-between px-2 gap-2">
-            <button onClick={toggleTheme} className="p-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-all shadow-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700" title="Toggle Theme">
-              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-
-            <button onClick={onLogout} className="p-2.5 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all shadow-sm border border-transparent hover:border-red-200 dark:hover:border-red-500/30" title="Logout">
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
+          <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 p-3 text-red-500 dark:text-red-400 hover:text-white dark:hover:text-white bg-red-50 dark:bg-red-500/10 hover:bg-red-500 dark:hover:bg-red-600 rounded-xl transition-all font-semibold text-sm border border-red-200 dark:border-red-500/20">
+            <LogOut className="w-4 h-4" /> Log Out
+          </button>
         </div>
       </aside>
 
