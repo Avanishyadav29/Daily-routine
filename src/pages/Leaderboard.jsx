@@ -8,45 +8,22 @@ export default function Leaderboard({ user }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Fetch ALL users to compute leaderboard
-    const usersUnsub = onSnapshot(collection(db, 'users'), async (usersSnap) => {
-      const usersData = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }))
-
-      // Fetch sessions for each user
-      const allLeaders = await Promise.all(
-        usersData.map(async (u) => {
-          const sessionsRef = collection(db, 'users', u.uid, 'sessions')
-          const sessionsSnap = await new Promise(resolve => {
-            const q = query(sessionsRef, orderBy('startedAt', 'desc'))
-            onSnapshot(q, resolve, () => resolve({ docs: [] }))
-          })
-
-          const today = new Date().toDateString()
-          const allSessions = sessionsSnap.docs?.map(d => d.data()) || []
-          const todaySessions = allSessions.filter(s => new Date(s.startedAt).toDateString() === today && s.completed)
-          const todaySecs = todaySessions.reduce((a, s) => a + (s.duration || 0), 0)
-          const totalSecs = allSessions.filter(s => s.completed).reduce((a, s) => a + (s.duration || 0), 0)
-
-          return {
-            uid: u.uid,
-            name: u.name || 'Unknown',
-            username: u.username || '',
-            photo: u.photo || null,
-            email: u.email || '',
-            todaySecs,
-            totalSecs,
-            todaySessions: todaySessions.length,
-            allSessions: allSessions.filter(s => s.completed).length,
-            activeSession: u.activeSession || null,
-          }
-        })
-      )
-
-      const sorted = allLeaders.sort((a, b) => b.todaySecs - a.todaySecs)
-      setLeaders(sorted)
+    // Fetch ALL users and sort by todayFocusHours
+    const usersUnsub = onSnapshot(collection(db, 'users'), (usersSnap) => {
+      const topLeaders = usersSnap.docs
+        .map(d => ({ 
+          uid: d.id, 
+          ...d.data(),
+          todaySecs: d.data().todayFocusHours || 0,
+          totalSecs: d.data().totalFocusHours || 0 // If we start tracking it
+        }))
+        .filter(u => u.name && u.username)
+        .sort((a, b) => b.todaySecs - a.todaySecs)
+      
+      setLeaders(topLeaders)
       setLoading(false)
     }, (err) => {
-      console.error("Error fetching leaderboard:", err)
+      console.error("Leaderboard fetch error:", err)
       setLoading(false)
     })
 

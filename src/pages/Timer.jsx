@@ -127,13 +127,10 @@ export default function Timer({ user }) {
 
   const handleTimerComplete = async () => {
     setIsRunning(false)
-    
-    // Play the stop bell notification
     if (!isMuted) playBellSound('stop')
 
     const elapsed = MODES[mode].duration - timeLeft
     
-    // Save session to Firestore if it lasted more than 5 seconds
     if (mode !== 'BREAK' && elapsed > 5) {
       try {
         const sessionData = {
@@ -148,18 +145,20 @@ export default function Timer({ user }) {
           completedAt: new Date().toISOString(),
           completed: true,
         }
-        addDoc(collection(db, 'users', user.uid, 'sessions'), sessionData)
-        addDoc(collection(db, 'globalSessions'), sessionData)
+        await addDoc(collection(db, 'users', user.uid, 'sessions'), sessionData)
+        await addDoc(collection(db, 'globalSessions'), sessionData)
+
+        // Force update leaderboard stat on user document
+        const activeRef = doc(db, 'users', user.uid)
+        await updateDoc(activeRef, { 
+          activeSession: null,
+          todayFocusHours: (totalToday || 0) + elapsed
+        }).catch(() => {})
       } catch (err) { console.warn("Session logging failed:", err) }
+    } else {
+      await updateDoc(doc(db, 'users', user.uid), { activeSession: null }).catch(() => {})
     }
 
-    // Reset user's active status on Firestore
-    try {
-      const activeRef = doc(db, 'users', user.uid)
-      updateDoc(activeRef, { activeSession: null }).catch(() => {})
-    } catch (err) {}
-
-    // After session, reset to selected mode and lock the start button for 120 seconds
     setTimeLeft(MODES[mode].duration)
     setCooldown(120)
   }
