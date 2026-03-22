@@ -213,10 +213,10 @@ export default function Timer({ user }) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto animate-fade-in pb-10 px-4 text-slate-300">
+    <div className="max-w-4xl mx-auto animate-fade-in pb-10 px-4 text-slate-700 dark:text-slate-300">
       
       {/* Warning Banner */}
-      <div className="flex items-start gap-3 p-4 mb-6 bg-[#1a1400] border border-yellow-900/50 rounded-xl shadow-lg">
+      <div className="flex items-start gap-3 p-4 mb-6 bg-yellow-50 dark:bg-[#1a1400] border border-yellow-200 dark:border-yellow-900/50 rounded-xl shadow-lg">
         <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-yellow-500" />
         <div>
           <p className="text-sm font-semibold text-yellow-500">You've logged {completedSessions} sessions today.</p>
@@ -224,21 +224,21 @@ export default function Timer({ user }) {
         </div>
       </div>
 
-      <div className="bg-[#15171e] border border-slate-800/60 rounded-2xl p-5 sm:p-7 shadow-2xl">
+      <div className="bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-2xl p-5 sm:p-7 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2 text-orange-400 font-bold text-lg tracking-wide">
             <Clock className="w-5 h-5" />
             Time Tracker
           </div>
-          <button className="p-2.5 bg-[#1e2129] hover:bg-[#262a33] rounded-xl transition-colors text-slate-400 border border-slate-800/50">
+          <button className="p-2.5 bg-slate-100 dark:bg-[#1e2129] hover:bg-slate-200 dark:hover:bg-[#262a33] rounded-xl transition-colors text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800/50">
             <BellOff className="w-4 h-4" />
           </button>
         </div>
 
         {/* Timer Duration Selection */}
         <div className="mb-8">
-          <p className="text-sm text-slate-300 font-medium mb-3">Timer Duration <span className="text-slate-500 text-xs font-normal">(Pomodoro Technique - Healthy Focus Sessions)</span></p>
+          <p className="text-sm text-slate-700 dark:text-slate-300 font-medium mb-3">Timer Duration <span className="text-slate-500 text-xs font-normal">(Pomodoro Technique - Healthy Focus Sessions)</span></p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
               onClick={() => selectMode('FOCUS_25')}
@@ -246,7 +246,7 @@ export default function Timer({ user }) {
               className={`flex flex-col items-start justify-center p-5 rounded-xl transition-all border ${
                 mode === 'FOCUS_25' 
                   ? 'bg-blue-600 border-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.15)]' 
-                  : 'bg-[#1e222b] border-[#2a2f3d] text-slate-400 hover:bg-[#252a36]'
+                  : 'bg-slate-50 dark:bg-[#1e222b] border-slate-200 dark:border-[#2a2f3d] text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#252a36]'
               }`}
             >
               <span className="text-2xl font-bold">25 min</span>
@@ -258,7 +258,7 @@ export default function Timer({ user }) {
               className={`flex flex-col items-start justify-center p-5 rounded-xl transition-all border ${
                 mode === 'FOCUS_45' 
                   ? 'bg-blue-500 border-blue-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.3)]' 
-                  : 'bg-[#1e222b] border-[#2a2f3d] text-slate-400 hover:bg-[#252a36]'
+                  : 'bg-slate-50 dark:bg-[#1e222b] border-slate-200 dark:border-[#2a2f3d] text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#252a36]'
               }`}
             >
               <span className="text-2xl font-bold">45 min</span>
@@ -274,10 +274,10 @@ export default function Timer({ user }) {
         {(!isRunning && timeLeft === MODES[mode].duration) && (
           <div className="space-y-6 mb-8 animate-fade-in">
             <div>
-              <label className="block text-sm text-slate-300 font-medium mb-2">Category</label>
+              <label className="block text-sm text-slate-700 dark:text-slate-300 font-medium mb-2">Category</label>
               <div className="relative">
                 <select 
-                  className="w-full appearance-none bg-[#111318] border border-slate-800 rounded-xl px-4 py-4 text-sm text-slate-300 focus:outline-none focus:border-blue-500/50 transition-colors cursor-pointer"
+                  className="w-full appearance-none bg-white dark:bg-[#111318] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-4 text-sm text-slate-800 dark:text-slate-300 focus:outline-none focus:border-blue-500/50 transition-colors cursor-pointer"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                 >
@@ -292,10 +292,10 @@ export default function Timer({ user }) {
             </div>
 
             <div>
-              <label className="block text-sm text-slate-300 font-medium mb-2">Link to Task <span className="text-slate-500 text-xs font-normal">(Optional)</span></label>
+              <label className="block text-sm text-slate-700 dark:text-slate-300 font-medium mb-2">Link to Task <span className="text-slate-500 text-xs font-normal">(Optional)</span></label>
               <div className="relative">
                 <select 
-                  className="w-full appearance-none bg-[#111318] border border-slate-800 rounded-xl px-4 py-4 text-sm text-slate-300 focus:outline-none focus:border-blue-500/50 transition-colors cursor-pointer"
+                  className="w-full appearance-none bg-white dark:bg-[#111318] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-4 text-sm text-slate-800 dark:text-slate-300 focus:outline-none focus:border-blue-500/50 transition-colors cursor-pointer"
                   value={selectedTask?.id || ''}
                   onChange={(e) => {
                     const task = routines.find(r => r.id === e.target.value)
@@ -315,12 +315,12 @@ export default function Timer({ user }) {
 
         {/* Start Button Area */}
         {!isRunning && timeLeft === MODES[mode].duration && (
-          <div className="animate-fade-in mt-2 border-t border-slate-800/60 pt-6">
+          <div className="animate-fade-in mt-2 border-t border-slate-200 dark:border-slate-800/60 pt-6">
             <button 
               onClick={startTimer}
-              className="w-full bg-slate-100 hover:bg-white text-slate-900 font-bold py-4 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-xl active:scale-[0.98]"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900 font-bold py-4 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-xl active:scale-[0.98]"
             >
-              <Play className="w-5 h-5 fill-slate-900" /> Start Session
+              <Play className="w-5 h-5 fill-current" /> Start Session
             </button>
             <p className="text-xs text-center text-slate-500 mt-5 font-medium flex justify-center items-center gap-1.5">
               <span className="text-yellow-500 text-[10px]">💡</span> Keep a 2-4 minute gap between sessions to avoid rapid session violations.
@@ -333,7 +333,7 @@ export default function Timer({ user }) {
           <div className="mt-8 border-t border-slate-800/50 pt-10 pb-4 flex flex-col items-center animate-fade-in relative">
             
             {mode === 'BREAK' && (
-              <div className="absolute top-0 -mt-4 bg-[#111318] px-4 border border-green-500/30 text-green-400 rounded-full py-1.5 flex items-center gap-2 shadow-lg">
+              <div className="absolute top-0 -mt-4 bg-white dark:bg-[#111318] px-4 border border-green-300 dark:border-green-500/30 text-green-500 dark:text-green-400 rounded-full py-1.5 flex items-center gap-2 shadow-lg">
                 <Coffee className="w-4 h-4" />
                 <span className="text-xs font-bold uppercase tracking-wider">Break Time</span>
               </div>
@@ -341,7 +341,7 @@ export default function Timer({ user }) {
 
             <div className="relative w-64 h-64 sm:w-72 sm:h-72 mb-10">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 240 240">
-                <circle cx="120" cy="120" r="110" fill="none" stroke="currentColor" className="text-slate-800/50" strokeWidth="8" />
+                <circle cx="120" cy="120" r="110" fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-800/50" strokeWidth="8" />
                 <circle
                   cx="120" cy="120" r="110" fill="none"
                   stroke="url(#timerGrad)" strokeWidth="12"
@@ -358,26 +358,26 @@ export default function Timer({ user }) {
                 </defs>
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center transition-transform duration-700 hover:scale-[1.03]">
-                <div className={`text-6xl sm:text-7xl font-black font-mono tracking-tight transition-all duration-500 drop-shadow-sm ${isRunning ? 'text-transparent bg-clip-text bg-gradient-to-br ' + MODES[mode].color : 'text-slate-200'}`}>
+                <div className={`text-6xl sm:text-7xl font-black font-mono tracking-tight transition-all duration-500 drop-shadow-sm ${isRunning ? 'text-transparent bg-clip-text bg-gradient-to-br ' + MODES[mode].color : 'text-slate-800 dark:text-slate-200'}`}>
                   {minutes}:{seconds}
                 </div>
                 {selectedTask && mode !== 'BREAK' && (
-                  <div className="mt-3 px-4 py-1.5 bg-[#111318] text-slate-300 text-xs font-medium rounded-full max-w-[180px] truncate border border-slate-800 shadow-md">
+                  <div className="mt-3 px-4 py-1.5 bg-white dark:bg-[#111318] text-slate-700 dark:text-slate-300 text-xs font-medium rounded-full max-w-[180px] truncate border border-slate-200 dark:border-slate-800 shadow-md">
                     📌 {selectedTask.title}
                   </div>
                 )}
                 {!selectedTask && mode !== 'BREAK' && category && (
-                  <div className="mt-3 px-4 py-1.5 bg-[#111318] text-slate-400 text-xs font-medium rounded-full max-w-[180px] truncate border border-slate-800 shadow-md">
+                  <div className="mt-3 px-4 py-1.5 bg-white dark:bg-[#111318] text-slate-500 dark:text-slate-400 text-xs font-medium rounded-full max-w-[180px] truncate border border-slate-200 dark:border-slate-800 shadow-md">
                     🏷️ {category}
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center gap-4 bg-[#111318] p-2 rounded-xl border border-slate-800 shadow-xl mt-4">
+            <div className="flex items-center gap-4 bg-white dark:bg-[#111318] p-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl mt-4">
               <button
                 onClick={resetTimer}
-                className="p-4 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all"
+                className="p-4 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
               >
                 <RotateCcw className="w-5 h-5" />
               </button>
@@ -391,7 +391,7 @@ export default function Timer({ user }) {
 
               <button
                 onClick={() => handleTimerComplete()}
-                className="p-4 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all"
+                className="p-4 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
                 title="Skip to end"
               >
                 <Zap className="w-5 h-5" />
