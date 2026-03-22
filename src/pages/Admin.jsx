@@ -86,9 +86,10 @@ export default function Admin({ user }) {
   const [activeTab, setActiveTab] = useState('users') // 'users' | 'feedback'
   const [feedbacks, setFeedbacks] = useState([])
   const [showCreateUser, setShowCreateUser] = useState(false)
-  const [newUserData, setNewUserData] = useState({ name: '', username: '', email: '', password: '' })
+  const [newUserData, setNewUserData] = useState({ name: '', username: '', email: '', password: '', role: 'user' })
   const [creatingUser, setCreatingUser] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     if (user?.email !== 'admin@daily.com') return
@@ -190,14 +191,14 @@ export default function Admin({ user }) {
       const cred = await createUserWithEmailAndPassword(secondaryAuth, newUserData.email, newUserData.password)
       await setDoc(doc(db, 'users', cred.user.uid), {
         name: newUserData.name,
-        username: newUserData.username.replace('@', '').toLowerCase().trim(),
+        username: (newUserData.username || '').replace('@', '').toLowerCase().trim(),
         email: newUserData.email,
-        role: 'user',
+        role: newUserData.role || 'user',
         createdAt: new Date().toISOString()
       })
       alert("User created successfully!")
       setShowCreateUser(false)
-      setNewUserData({ name: '', username: '', email: '', password: '' })
+      setNewUserData({ name: '', username: '', email: '', password: '', role: 'user' })
     } catch (err) {
       alert("Error: " + err.message)
     } finally {
@@ -415,6 +416,24 @@ export default function Admin({ user }) {
                  </div>
               </div>
 
+              {/* Role Management */}
+              <div className="space-y-4">
+                 <div className="flex items-center justify-between px-1">
+                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <Shield className="w-3 h-3 text-blue-500" /> Admin Delegation Role
+                   </h3>
+                   <span className="text-[10px] bg-blue-500/10 text-blue-600 px-2.5 py-1 rounded-full font-black uppercase tracking-tighter shadow-sm ring-1 ring-blue-500/20">{selectedUser.role || 'user'}</span>
+                 </div>
+                 <div className="flex gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/60 rounded-2xl border border-slate-200/50 dark:border-white/5 shadow-inner">
+                    {['user', 'moderator', 'coordinator'].map(r => (
+                      <button key={r} onClick={() => changeRole(selectedUser.uid, r, selectedUser.email)} 
+                        className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all duration-300 ${selectedUser.role === r ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-xl shadow-blue-500/10 ring-1 ring-slate-200 dark:ring-slate-600' : 'text-slate-400 opacity-60 hover:opacity-100 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
+                        {r}
+                      </button>
+                    ))}
+                 </div>
+              </div>
+
               {/* Session History */}
               <div className="space-y-3">
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -456,12 +475,30 @@ export default function Admin({ user }) {
               <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3"><UserPlus className="text-blue-500" /> New User</h2>
               <button onClick={() => setShowCreateUser(false)} className="text-slate-400 hover:text-red-500"><X /></button>
             </div>
-            <form onSubmit={handleCreateUser} className="p-8 space-y-5">
+            <form onSubmit={handleCreateUser} className="p-8 space-y-4">
               <input required className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 text-sm" placeholder="Full Name" value={newUserData.name} onChange={e => setNewUserData({...newUserData, name: e.target.value})} />
               <input className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 text-sm" placeholder="Username" value={newUserData.username} onChange={e => setNewUserData({...newUserData, username: e.target.value})} />
               <input required type="email" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 text-sm" placeholder="Email" value={newUserData.email} onChange={e => setNewUserData({...newUserData, email: e.target.value})} />
-              <input required type="password" minLength={6} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 text-sm" placeholder="Password" value={newUserData.password} onChange={e => setNewUserData({...newUserData, password: e.target.value})} />
-              <button type="submit" disabled={creatingUser} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black transition-all shadow-xl shadow-blue-500/20 disabled:opacity-50">
+              <div className="relative">
+                <input required type={showPassword ? "text" : "password"} minLength={6} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 text-sm" placeholder="Password" value={newUserData.password} onChange={e => setNewUserData({...newUserData, password: e.target.value})} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-500 transition-colors">
+                  {showPassword ? <Unlock className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              
+              <div className="pt-2">
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-2 block">Set Account Role</label>
+                 <div className="grid grid-cols-3 gap-2 bg-slate-100 dark:bg-slate-900/50 p-1.5 rounded-2xl border border-slate-200/50 dark:border-white/5">
+                    {['user', 'moderator', 'coordinator'].map(r => (
+                      <button type="button" key={r} onClick={() => setNewUserData({...newUserData, role: r})} 
+                        className={`py-2 rounded-xl text-[10px] font-black uppercase transition-all ${newUserData.role === r ? 'bg-white dark:bg-slate-700 text-blue-500 shadow-sm ring-1 ring-slate-200 dark:ring-slate-600' : 'text-slate-400 opacity-60'}`}>
+                        {r}
+                      </button>
+                    ))}
+                 </div>
+              </div>
+
+              <button type="submit" disabled={creatingUser} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black transition-all shadow-xl shadow-blue-500/20 disabled:opacity-50 mt-2">
                 {creatingUser ? 'Creating...' : 'Create Account'}
               </button>
             </form>
