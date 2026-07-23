@@ -126,8 +126,14 @@ function App() {
         // Admin Remote Logout listener
         let unsubAdminSess = () => {}
         if (isAdm) {
+           // Create session doc if it doesn't exist on load
+           setDoc(doc(db, 'users', firebaseUser.uid, 'sessions', currentSession), { 
+              userAgent: navigator.userAgent, 
+              lastActive: new Date().toISOString()
+           }, { merge: true }).catch(err => console.warn("Failed to create session on load", err))
+
            unsubAdminSess = onSnapshot(doc(db, 'users', firebaseUser.uid, 'sessions', currentSession), (snap) => {
-              if (!snap.exists()) {
+              if (snap.exists() && snap.data().terminated === true) {
                  handleLogout()
                  alert("Session Terminated: This session was logged out by the administrator.")
               }
