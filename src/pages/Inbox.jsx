@@ -7,6 +7,8 @@ import {
 import { Trash2 } from 'lucide-react'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
+import { isAdminUser } from '../utils/reservedUsernames'
+
 export default function Inbox({ user, clearBadge }) {
   const [messages, setMessages] = useState([])
   const [text, setText] = useState('')
@@ -14,7 +16,7 @@ export default function Inbox({ user, clearBadge }) {
   const [uploading, setUploading] = useState(false)
   const [attachment, setAttachment] = useState(null) // { file, preview, type }
   const [canChat, setCanChat] = useState(false)
-  const isAdmin = user?.email === 'admin@daily.com'
+  const isAdmin = isAdminUser(user)
 
   const [allUsers, setAllUsers] = useState([])
   const [selectedUser, setSelectedUser] = useState(null)

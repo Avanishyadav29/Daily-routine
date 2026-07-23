@@ -4,6 +4,8 @@ import { db, storage } from '../firebase'
 import { collection, addDoc, onSnapshot, query, orderBy, limit, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
+import { isAdminUser } from '../utils/reservedUsernames'
+
 const BAD_WORDS = ['gaali', 'harami', 'kamina', 'saala', 'bewakoof', 'chutiya', 'madarchod', 'behenchod', 'bsdk', 'gand', 'gaand', 'randi', 'bhosadi', 'porn', 'sex', 'lund', 'lavde', 'lawde']
 
 export default function Townhall({ user, clearBadge }) {
@@ -15,7 +17,7 @@ export default function Townhall({ user, clearBadge }) {
   const fileRef = useRef(null)
   const bottomRef = useRef(null)
   
-  const isAdmin = user?.email === 'admin@daily.com'
+  const isAdmin = isAdminUser(user)
   const isMod = user?.role === 'moderator'
   const isCoord = user?.role === 'coordinator'
   const canDelete = isAdmin || isMod || isCoord

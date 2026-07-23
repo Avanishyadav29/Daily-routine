@@ -100,12 +100,12 @@ export default function Admin({ user }) {
     if (!isAdminUser(user)) return
 
     const unsub = onSnapshot(collection(db, 'users'), (usersSnap) => {
-      const usersList = usersSnap.docs.map(doc => ({
-        uid: doc.id,
-        ...doc.data()
-      }))
+      const usersList = usersSnap.docs
+        .map(doc => ({ uid: doc.id, ...doc.data() }))
+        .filter(u => !isAdminUser(u)) // Hide admins from the user table
+
       setAllUsers(usersList)
-      setStats(prev => ({ ...prev, totalUsers: usersSnap.size }))
+      setStats(prev => ({ ...prev, totalUsers: usersList.length }))
     })
 
     // Fetch Admin Sessions

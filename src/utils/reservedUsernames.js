@@ -22,6 +22,11 @@ export const ADMIN_EMAILS = [
   'avanishydvv@gmail.com'
 ]
 
+export const isAdminUser = (user) => {
+  if (!user) return false;
+  return ADMIN_EMAILS.includes(user.email?.toLowerCase()?.trim()) || user.role === 'admin'
+}
+
 export const isReservedUsername = (username, userEmail) => {
   if (!username) return false
   const clean = username.replace(/^@/, '').trim().toLowerCase()

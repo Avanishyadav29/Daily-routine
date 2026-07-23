@@ -4,6 +4,8 @@ import { db, storage } from '../firebase'
 import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
+import { isAdminUser } from '../utils/reservedUsernames'
+
 export default function Announcements({ user, clearBadge }) {
   const [announcements, setAnnouncements] = useState([])
   const [text, setText] = useState('')
@@ -14,7 +16,7 @@ export default function Announcements({ user, clearBadge }) {
   const [allUsers, setAllUsers] = useState([])
   const fileRef = useRef(null)
 
-  const isAdmin = user?.email === 'admin@daily.com'
+  const isAdmin = isAdminUser(user)
   const isMod = user?.role === 'moderator'
   const isCoord = user?.role === 'coordinator'
   const canPost = isAdmin || isMod || isCoord
