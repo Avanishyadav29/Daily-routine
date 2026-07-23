@@ -73,6 +73,9 @@ export default function Login({ onLogin, onSignup }) {
           return 
         }
         await onSignup(formData.email, formData.password, formData.name, formData.mobile, rawUsername)
+        setSuccess('Account created! Please check your email (and spam folder) to verify your account before logging in.')
+        setMode('login')
+        setFormData(prev => ({ ...prev, password: '' }))
       } catch (err) {
         console.error("Signup error:", err)
         const code = err.code

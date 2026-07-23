@@ -160,7 +160,7 @@ function App() {
     // Check if email is verified
     if (!isAdm && !cred.user.emailVerified) {
       await signOut(auth)
-      throw new Error('Please verify your email address before logging in. Check your inbox for the verification link.')
+      throw new Error('Please verify your email address before logging in. Check your inbox (and spam folder) for the verification link.')
     }
     
     try {
@@ -216,8 +216,6 @@ function App() {
     if (!isAdm) {
       await signOut(auth)
     }
-    
-    navigate('/')
   }
 
   const handleUpdateProfile = async (updatedData) => {
