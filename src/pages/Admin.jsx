@@ -6,6 +6,9 @@ import { collection, getDocs, doc, updateDoc, deleteDoc, onSnapshot, query, orde
 import { Navigate } from 'react-router-dom'
 import { db } from '../firebase'
 
+const ADMIN_EMAILS = ['admin@daily.com', 'avanishydvv@gmail.com']
+const isAdminUser = (user) => user && (ADMIN_EMAILS.includes(user.email?.toLowerCase().trim()) || user.role === 'admin')
+
 const UserTable = ({ users, onAction }) => {
   const { viewUser, flagViolation, toggleBlockUser, deleteUser, toggleChatAccess, toggleTownhallRestriction, editUserEmail } = onAction
   
