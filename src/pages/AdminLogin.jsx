@@ -53,7 +53,7 @@ export default function AdminLogin({ onLogin }) {
 
         <h2 className="text-3xl font-extrabold text-center text-white mb-2 tracking-tight">Admin Portal</h2>
         <p className="text-slate-400 text-center text-sm mb-8">
-          Login with: <span className="text-red-400 font-mono text-xs">avanishydvv@gmail.com</span>
+          Restricted System Access
         </p>
 
         {error && (
@@ -68,7 +68,7 @@ export default function AdminLogin({ onLogin }) {
             <input
               type="email"
               className="w-full bg-slate-950/50 border border-slate-700/60 rounded-xl px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all"
-              placeholder="avanishydvv@gmail.com"
+              placeholder="admin@yourdomain.com"
               value={email}
               onChange={e => setEmail(e.target.value)}
               autoComplete="username"

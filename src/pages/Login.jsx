@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { Sun, LogIn, UserPlus, Eye, EyeOff, Mail, KeyRound, AtSign } from 'lucide-react'
+import { Sun, LogIn, UserPlus, Eye, EyeOff, Mail, KeyRound, AtSign, Shield } from 'lucide-react'
 import { sendPasswordResetEmail } from 'firebase/auth'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { auth, db } from '../firebase'
+import { Link } from 'react-router-dom'
 
 import { isReservedUsername } from '../utils/reservedUsernames'
 
@@ -130,7 +131,14 @@ export default function Login({ onLogin, onSignup }) {
   const switchMode = (m) => { setMode(m); setError(''); setSuccess(''); setFormData({ name: '', username: '', email: '', password: '', mobile: '', loginInput: '' }) }
 
   return (
-    <div className="flex items-center justify-center min-h-[88vh]">
+    <div className="flex items-center justify-center min-h-[88vh] relative">
+      <Link 
+        to="/admin-login" 
+        className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-full text-xs font-bold transition-colors"
+      >
+        <Shield className="w-3.5 h-3.5" />
+        Admin
+      </Link>
       <div className="w-full max-w-md">
         {/* Card */}
         <div className="bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-3xl p-8 sm:p-10 text-center shadow-2xl shadow-slate-200/50 dark:shadow-slate-950/80">

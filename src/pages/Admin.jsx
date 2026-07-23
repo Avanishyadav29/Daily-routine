@@ -57,7 +57,18 @@ const UserTable = ({ users, onAction }) => {
                 )}
               </td>
               <td className="px-6 py-4 text-center">
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${u.isBlocked ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>{u.isBlocked ? 'BLOCKED' : 'ACTIVE'}</span>
+                <div className="flex flex-col items-center gap-1">
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${u.isBlocked ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>{u.isBlocked ? 'BLOCKED' : 'ACTIVE'}</span>
+                  <select 
+                    value={u.role || 'user'} 
+                    onChange={(e) => onAction.changeRole(u.uid, e.target.value, u.email)}
+                    className="text-[10px] bg-slate-100 dark:bg-slate-800 border-none rounded outline-none cursor-pointer mt-1 font-bold text-slate-600 dark:text-slate-300"
+                  >
+                    <option value="user">User</option>
+                    <option value="moderator">Mod</option>
+                    <option value="coordinator">Coord</option>
+                  </select>
+                </div>
               </td>
               <td className="px-6 py-4 text-center">
                 <div className="text-xs font-bold text-blue-500">{formatTime(u.todayFocusHours)}</div>
@@ -345,7 +356,7 @@ export default function Admin({ user }) {
                    <span className="text-[10px] bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full">{staffUsers.length}</span>
                 </h2>
                 <div className="glass-card p-0 overflow-hidden border border-slate-200 dark:border-slate-800">
-                  <UserTable users={staffUsers} onAction={{ viewUser, flagViolation, toggleBlockUser, deleteUser, toggleChatAccess, toggleTownhallRestriction, editUserEmail }} />
+                  <UserTable users={staffUsers} onAction={{ viewUser, flagViolation, toggleBlockUser, deleteUser, toggleChatAccess, toggleTownhallRestriction, editUserEmail, changeRole }} />
                 </div>
               </div>
             )}
@@ -357,7 +368,7 @@ export default function Admin({ user }) {
                  <span className="text-[10px] bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full">{generalUsers.length}</span>
               </h2>
               <div className="glass-card p-0 overflow-hidden border border-slate-200 dark:border-slate-800">
-                <UserTable users={generalUsers} onAction={{ viewUser, flagViolation, toggleBlockUser, deleteUser, toggleChatAccess, toggleTownhallRestriction, editUserEmail }} />
+                <UserTable users={generalUsers} onAction={{ viewUser, flagViolation, toggleBlockUser, deleteUser, toggleChatAccess, toggleTownhallRestriction, editUserEmail, changeRole }} />
               </div>
             </div>
           </>

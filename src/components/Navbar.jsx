@@ -1,6 +1,7 @@
 import React from 'react'
 import { LogOut, Sun, Moon, Shield, User, Timer, Trophy, MessageSquare, Medal, LayoutDashboard, MessageCircle, Megaphone } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
+import { isAdminUser } from '../utils/reservedUsernames'
 
 export default function Navbar({ user, onLogout, isDarkMode, toggleTheme, unreadCounts }) {
   const location = useLocation()
@@ -16,14 +17,14 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme, unread
     { to: '/inbox', icon: <MessageSquare className="w-5 h-5" />, label: 'Inbox', badge: unreadCounts?.inbox },
     { to: '/announcements', icon: <Megaphone className="w-5 h-5" />, label: 'Announcements', badge: unreadCounts?.announcements },
     { to: '/townhall', icon: <MessageCircle className="w-5 h-5" />, label: 'Townhall', badge: unreadCounts?.townhall },
-    ...((user.email !== 'admin@daily.com' && user.email !== 'avanishydvv@gmail.com' && user.role !== 'admin')
+    ...(!isAdminUser(user)
       ? [{ to: '/feedback', icon: <MessageCircle className="w-5 h-5" />, label: 'Feedback' }] 
       : [{ to: '/admin', icon: <Shield className="w-5 h-5" />, label: 'Admin Dashboard' }]
     ),
   ]
 
   const getRoleBadge = () => {
-    const role = (user.email === 'admin@daily.com' || user.email === 'avanishydvv@gmail.com' || user.role === 'admin') ? 'admin' : (user.role || 'user')
+    const role = isAdminUser(user) ? 'admin' : (user.role || 'user')
     switch(role) {
       case 'admin': return <span className="bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-widest border border-red-200 dark:border-red-500/30">Admin</span>
       case 'moderator': return <span className="bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-widest border border-purple-200 dark:border-purple-500/30">Mod</span>
