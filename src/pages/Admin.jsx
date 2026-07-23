@@ -79,7 +79,7 @@ const UserTable = ({ users, onAction }) => {
 
 export default function Admin({ user }) {
   const [allUsers, setAllUsers] = useState([])
-  const [stats, setStats] = useState({ totalUsers: 0, totalRoutines: 0 })
+  const [stats, setStats] = useState({ totalUsers: 0, totalRoutines: 0, activeToday: 0 })
   const [selectedUser, setSelectedUser] = useState(null)
   const [userSessions, setUserSessions] = useState([])
   const [loadingSessions, setLoadingSessions] = useState(false)
@@ -94,7 +94,7 @@ export default function Admin({ user }) {
   const [terminating, setTerminating] = useState(false)
 
   useEffect(() => {
-    if (user?.email !== 'admin@daily.com') return
+    if (!isAdminUser(user)) return
 
     const unsub = onSnapshot(collection(db, 'users'), (usersSnap) => {
       const usersList = usersSnap.docs.map(doc => ({
@@ -116,7 +116,7 @@ export default function Admin({ user }) {
     })
 
     return () => { unsub(); unsubSessions(); unsubFeed() }
-  }, [user?.uid, user?.email])
+  }, [user?.uid, user?.email, user?.role])
 
   useEffect(() => {
     if (allUsers.length === 0) return
@@ -131,15 +131,15 @@ export default function Admin({ user }) {
     getGlobalStats()
   }, [allUsers.length])
 
-  if (user?.email !== 'admin@daily.com') return <Navigate to="/" />
+  if (!isAdminUser(user)) return <Navigate to="/" />
 
   const toggleBlockUser = async (uid, current, email) => {
-    if (email === 'admin@daily.com') return alert("Cannot block the Admin account!")
+    if (ADMIN_EMAILS.includes(email)) return alert("Cannot block the Admin account!")
     await updateDoc(doc(db, 'users', uid), { isBlocked: !current })
   }
 
   const changeRole = async (uid, newRole, email) => {
-    if (email === 'admin@daily.com') return alert("Cannot change Admin role!")
+    if (ADMIN_EMAILS.includes(email)) return alert("Cannot change Admin role!")
     await updateDoc(doc(db, 'users', uid), { role: newRole })
   }
 

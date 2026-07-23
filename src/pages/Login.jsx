@@ -4,14 +4,20 @@ import { sendPasswordResetEmail } from 'firebase/auth'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 
+import { isReservedUsername } from '../utils/reservedUsernames'
+
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
 // Find email by username from Firestore
 const getEmailByUsername = async (username) => {
-  const clean = username.replace(/^@/, '').trim().toLowerCase()
-  const q = query(collection(db, 'users'), where('username', '==', clean))
-  const snap = await getDocs(q)
-  if (!snap.empty) return snap.docs[0].data().email
+  try {
+    const clean = username.replace(/^@/, '').trim().toLowerCase()
+    const q = query(collection(db, 'users'), where('username', '==', clean))
+    const snap = await getDocs(q)
+    if (!snap.empty) return snap.docs[0].data().email
+  } catch (err) {
+    console.warn("Could not check username uniqueness:", err)
+  }
   return null
 }
 
@@ -50,21 +56,40 @@ export default function Login({ onLogin, onSignup }) {
       if (!rawUsername) { setError('Please enter a username'); return }
       if (!/^[a-zA-Z0-9]/.test(rawUsername)) { setError('Username must start with a letter or number.'); return }
       
-      setLoading(true)
-      const isTaken = await getEmailByUsername(rawUsername)
-      if (isTaken) { setError('Username is already taken.'); setLoading(false); return }
+      if (isReservedUsername(rawUsername, formData.email)) {
+        setError('This username is reserved for system admins. Please choose another username.')
+        return
+      }
+
       if (!isValidEmail(formData.email)) { setError('Invalid email format.'); return }
       if (!formData.mobile.trim()) { setError('Please enter your mobile number'); return }
       if (formData.password.length < 4) { setError('Password must be at least 4 characters'); return }
+      
       setLoading(true)
       try {
+        const isTaken = await getEmailByUsername(rawUsername)
+        if (isTaken) { 
+          setError(`Username @${rawUsername} is already taken. Please choose a different username.`)
+          return 
+        }
         await onSignup(formData.email, formData.password, formData.name, formData.mobile, rawUsername)
       } catch (err) {
+        console.error("Signup error:", err)
         const code = err.code
-        if (code === 'auth/email-already-in-use') setError('This email is already registered. Please log in.')
-        else if (code === 'auth/too-many-requests') setError('Too many attempts. Try again later.')
-        else setError('Something went wrong. Check your Firebase setup.')
-      } finally { setLoading(false) }
+        if (code === 'auth/email-already-in-use') {
+          setError(`This email (${formData.email}) is ALREADY registered! Click 'Log in' below to sign in with your password.`)
+        } else if (code === 'auth/weak-password') {
+          setError('Password should be at least 6 characters.')
+        } else if (code === 'auth/invalid-email') {
+          setError('Invalid email address format.')
+        } else if (code === 'auth/too-many-requests') {
+          setError('Too many attempts. Try again later.')
+        } else {
+          setError(err.message || 'Signup failed. Please try again.')
+        }
+      } finally { 
+        setLoading(false) 
+      }
       return
     }
 
@@ -86,11 +111,20 @@ export default function Login({ onLogin, onSignup }) {
     try {
       await onLogin(email, password)
     } catch (err) {
-      const code = err.code
-      if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') setError('Invalid credentials. Check your email/username and password.')
-      else if (code === 'auth/too-many-requests') setError('Too many attempts. Try again later.')
-      else setError('Something went wrong.')
-    } finally { setLoading(false) }
+      console.error("Login Error:", err)
+      const code = err.code || ''
+      if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        setError('Incorrect email/username or password. If you forgot password, click "Forgot password?" below.')
+      } else if (code === 'auth/operation-not-allowed') {
+        setError('Email/Password sign-in provider is disabled in Firebase Console. Go to Authentication -> Sign-in method -> Enable Email/Password.')
+      } else if (code === 'auth/too-many-requests') {
+        setError('Too many failed login attempts. Please wait a few minutes or reset your password.')
+      } else {
+        setError(err.message || 'Login failed. Please check your credentials.')
+      }
+    } finally { 
+      setLoading(false) 
+    }
   }
 
   const switchMode = (m) => { setMode(m); setError(''); setSuccess(''); setFormData({ name: '', username: '', email: '', password: '', mobile: '', loginInput: '' }) }

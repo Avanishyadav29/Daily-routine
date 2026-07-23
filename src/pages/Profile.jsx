@@ -5,6 +5,7 @@ import { EmailAuthProvider, reauthenticateWithCredential, deleteUser as deleteAu
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { updatePassword } from 'firebase/auth'
+import { isReservedUsername } from '../utils/reservedUsernames'
 
 export default function Profile({ user, onUpdateProfile, setupMode }) {
   const rawUsername = (user.username || '').replace(/^@/, '')
@@ -67,6 +68,11 @@ export default function Profile({ user, onUpdateProfile, setupMode }) {
     }
     if (!/^[a-zA-Z0-9]/.test(trimmedUsername)) {
       setError('Username must start with a letter or number.')
+      return
+    }
+
+    if (isReservedUsername(trimmedUsername, user.email)) {
+      setError('This username is reserved for system admins. Please choose another username.')
       return
     }
 

@@ -1,21 +1,25 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useNavigate, Link, useLocation } from 'react-router-dom'
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'firebase/auth'
-import { doc, setDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore'
+import { doc, setDoc, getDoc, updateDoc, onSnapshot, collection, query, limit } from 'firebase/firestore'
 import { auth, db } from './firebase'
-import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import Profile from './pages/Profile'
-import Admin from './pages/Admin'
-import Timer from './pages/Timer'
-import Leaderboard from './pages/Leaderboard'
-import Inbox from './pages/Inbox'
-import Badges from './pages/Badges'
-import Feedback from './pages/Feedback'
-import Announcements from './pages/Announcements'
-import Townhall from './pages/Townhall'
-import AdminLogin from './pages/AdminLogin'
 import Navbar from './components/Navbar'
+
+const Login = lazy(() => import('./pages/Login'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Profile = lazy(() => import('./pages/Profile'))
+const Admin = lazy(() => import('./pages/Admin'))
+const Timer = lazy(() => import('./pages/Timer'))
+const Leaderboard = lazy(() => import('./pages/Leaderboard'))
+const Inbox = lazy(() => import('./pages/Inbox'))
+const Badges = lazy(() => import('./pages/Badges'))
+const Feedback = lazy(() => import('./pages/Feedback'))
+const Announcements = lazy(() => import('./pages/Announcements'))
+const Townhall = lazy(() => import('./pages/Townhall'))
+const AdminLogin = lazy(() => import('./pages/AdminLogin'))
+
+const ADMIN_EMAILS = ['admin@daily.com', 'avanishydvv@gmail.com']
+const isAdminEmail = (email) => ADMIN_EMAILS.includes(email?.toLowerCase()?.trim())
 
 function App() {
   const [user, setUser] = useState(null)
@@ -41,32 +45,55 @@ function App() {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        const isAdm = isAdminEmail(firebaseUser.email)
         const userRef = doc(db, 'users', firebaseUser.uid)
-        const unsubUser = onSnapshot(userRef, (snap) => {
+        const unsubUser = onSnapshot(userRef, async (snap) => {
           const data = snap.data()
-          if (!data || !data.name || !data.username) {
-            setIsProfileIncomplete(true)
-            setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: 'New User', username: '', photo: '', isBlocked: false, role: 'user' })
+          if (!data) {
+            const defaultProfile = {
+              name: isAdm ? 'Admin' : (firebaseUser.displayName || 'User'),
+              username: isAdm ? (firebaseUser.email.includes('admin') ? 'admin' : firebaseUser.email.split('@')[0]) : (firebaseUser.email.split('@')[0] || ''),
+              email: firebaseUser.email,
+              photo: firebaseUser.photoURL || '',
+              isBlocked: false,
+              violation: false,
+              role: isAdm ? 'admin' : 'user',
+              createdAt: new Date().toISOString(),
+              sessionId: currentSession
+            }
+            try {
+              await setDoc(userRef, defaultProfile, { merge: true })
+            } catch (err) {
+              console.warn("Initial profile setDoc failed:", err)
+            }
+            setUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              ...defaultProfile
+            })
             setLoading(false)
             return
           }
+
           if (data.isBlocked) { signOut(auth); setUser(null); setLoading(false); return }
           
-          // Single Session Enforcement (Skip for Admin)
-          if (firebaseUser.email !== 'admin@daily.com' && data.sessionId && data.sessionId !== currentSession) {
+          // Single Session Enforcement (Skip for Admins)
+          if (!isAdm && data.sessionId && data.sessionId !== currentSession) {
              handleLogout()
              alert("Session Expired: You have been logged in on another device.")
              return
           }
 
-          setIsProfileIncomplete(false)
+          const hasUsername = data.username && data.name
+          setIsProfileIncomplete(!hasUsername)
+
           setUser({ 
             uid: firebaseUser.uid, 
             email: firebaseUser.email, 
             ...data,
-            name: data.name || (firebaseUser.email === 'admin@daily.com' ? 'Admin' : 'User'),
+            name: data.name || (isAdm ? 'Admin' : 'User'),
             username: data.username || '',
-            role: firebaseUser.email === 'admin@daily.com' ? 'admin' : (data.role || 'user')
+            role: (isAdm || data.role === 'admin') ? 'admin' : (data.role || 'user')
           })
           setLoading(false)
         }, (err) => {
@@ -81,14 +108,16 @@ function App() {
         })
 
         // Announcements listener for badge
-        const unsubAnn = onSnapshot(collection(db, 'announcements'), (snap) => {
+        const qAnn = query(collection(db, 'announcements'), limit(20))
+        const unsubAnn = onSnapshot(qAnn, (snap) => {
           const lastChecked = localStorage.getItem('last_announcement_check') || new Date(0).toISOString()
           const novel = snap.docs.filter(d => (d.data().createdAt > lastChecked || !lastChecked) && d.data().fromUid !== firebaseUser.uid).length
           setUnreadCounts(prev => ({ ...prev, announcements: novel }))
         })
 
         // Townhall listener for badge
-        const unsubTH = onSnapshot(collection(db, 'townhall'), (snap) => {
+        const qTH = query(collection(db, 'townhall'), limit(20))
+        const unsubTH = onSnapshot(qTH, (snap) => {
           const lastTH = localStorage.getItem('last_townhall_check') || new Date(0).toISOString()
           const novel = snap.docs.filter(d => d.data().createdAt > lastTH && d.data().fromUid !== firebaseUser.uid).length
           setUnreadCounts(prev => ({ ...prev, townhall: novel }))
@@ -96,7 +125,7 @@ function App() {
 
         // Admin Remote Logout listener
         let unsubAdminSess = () => {}
-        if (firebaseUser.email === 'admin@daily.com') {
+        if (isAdm) {
            unsubAdminSess = onSnapshot(doc(db, 'users', firebaseUser.uid, 'sessions', currentSession), (snap) => {
               if (!snap.exists()) {
                  handleLogout()
@@ -120,20 +149,38 @@ function App() {
 
   const handleLogin = async (email, password) => {
     const cred = await signInWithEmailAndPassword(auth, email, password)
-    if (email !== 'admin@daily.com') {
-       await updateDoc(doc(db, 'users', cred.user.uid), { sessionId: currentSession })
-    } else {
-       // Track admin sessions for the dashboard
-       await setDoc(doc(db, 'users', cred.user.uid, 'sessions', currentSession), { 
-          userAgent: navigator.userAgent, 
-          lastActive: new Date().toISOString(),
-          ip: 'unavailable' // Client-side cannot get IP easily without external API
-       })
+    const isAdm = isAdminEmail(email)
+    
+    try {
+      await setDoc(doc(db, 'users', cred.user.uid), { 
+        sessionId: currentSession,
+        email: email,
+        role: isAdm ? 'admin' : 'user'
+      }, { merge: true })
+
+      if (isAdm) {
+         await setDoc(doc(db, 'users', cred.user.uid, 'sessions', currentSession), { 
+            userAgent: navigator.userAgent, 
+            lastActive: new Date().toISOString(),
+            ip: 'unavailable'
+         }, { merge: true })
+      }
+    } catch (firestoreErr) {
+      console.warn("Firestore session sync error:", firestoreErr)
     }
-    navigate('/')
+    
+    // Navigate based on role
+    if (isAdm) {
+      navigate('/admin')
+    } else {
+      navigate('/')
+    }
+    
+    return isAdm
   }
 
   const handleSignup = async (email, password, name, mobile, username) => {
+    const isAdm = isAdminEmail(email)
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(cred.user, { displayName: name })
     await setDoc(doc(db, 'users', cred.user.uid), { 
@@ -144,9 +191,10 @@ function App() {
       photo: '', 
       isBlocked: false, 
       violation: false, 
+      role: isAdm ? 'admin' : 'user',
       createdAt: new Date().toISOString(),
       sessionId: currentSession 
-    })
+    }, { merge: true })
     navigate('/')
   }
 
@@ -193,27 +241,44 @@ function App() {
             </div>
           )}
 
-          <Routes>
-            <Route path="/login" element={user ? <Navigate to="/" /> : <Login onLogin={handleLogin} onSignup={handleSignup} />} />
-            {/* Admin Dedicated Login */}
-            <Route path="/admin-login" element={!user ? <AdminLogin onLogin={handleLogin} /> : <Navigate to={user.email === 'admin@daily.com' ? '/admin' : '/'} />} />
-            <Route path="/" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
-            
-            {/* The timer is mounted globally below, here we just serve an empty structural box to satisfy internal routing matches and prevent 'Not Found' redirect logic if any exists, but it's redundant. We can keep it to simply enforce login redirect on /timer. */}
-            <Route path="/timer" element={user ? <div className="hidden"></div> : <Navigate to="/login" />} />
-            
-            <Route path="/leaderboard" element={user ? <Leaderboard user={user} /> : <Navigate to="/login" />} />
-            <Route path="/inbox" element={user ? <Inbox user={user} clearBadge={() => clearBadge('inbox')} /> : <Navigate to="/login" />} />
-            <Route path="/announcements" element={user ? <Announcements user={user} clearBadge={() => clearBadge('announcements')} /> : <Navigate to="/login" />} />
-            <Route path="/townhall" element={user ? <Townhall user={user} clearBadge={() => clearBadge('townhall')} /> : <Navigate to="/login" />} />
-            <Route path="/badges" element={user ? <Badges user={user} /> : <Navigate to="/login" />} />
-            <Route path="/feedback" element={user ? <Feedback user={user} /> : <Navigate to="/login" />} />
-            <Route path="/profile" element={user ? <Profile user={user} onUpdateProfile={handleUpdateProfile} setupMode={isProfileIncomplete} /> : <Navigate to="/login" />} />
-            <Route path="/admin" element={user ? <Admin user={user} /> : <Navigate to="/login" />} />
-            <Route path="*" element={<Navigate to={isProfileIncomplete ? "/profile" : "/"} />} />
-          </Routes>
+          <Suspense fallback={
+            <div className="min-h-[50vh] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full border-3 border-blue-500 border-t-transparent animate-spin"></div>
+            </div>
+          }>
+            <Routes>
+              <Route path="/login" element={user ? <Navigate to="/" /> : <Login onLogin={handleLogin} onSignup={handleSignup} />} />
+              {/* Admin Dedicated Login - if user is logged in, redirect to admin or home */}
+              <Route path="/admin-login" element={
+                user 
+                  ? <Navigate to={(user.role === 'admin' || isAdminEmail(user.email)) ? '/admin' : '/'} />
+                  : <AdminLogin onLogin={handleLogin} />
+              } />
+              <Route path="/" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
+              
+              {/* The timer is mounted globally below */}
+              <Route path="/timer" element={user ? <div className="hidden"></div> : <Navigate to="/login" />} />
+              
+              <Route path="/leaderboard" element={user ? <Leaderboard user={user} /> : <Navigate to="/login" />} />
+              <Route path="/inbox" element={user ? <Inbox user={user} clearBadge={() => clearBadge('inbox')} /> : <Navigate to="/login" />} />
+              <Route path="/announcements" element={user ? <Announcements user={user} clearBadge={() => clearBadge('announcements')} /> : <Navigate to="/login" />} />
+              <Route path="/townhall" element={user ? <Townhall user={user} clearBadge={() => clearBadge('townhall')} /> : <Navigate to="/login" />} />
+              <Route path="/badges" element={user ? <Badges user={user} /> : <Navigate to="/login" />} />
+              <Route path="/feedback" element={user ? <Feedback user={user} /> : <Navigate to="/login" />} />
+              <Route path="/profile" element={user ? <Profile user={user} onUpdateProfile={handleUpdateProfile} setupMode={isProfileIncomplete} /> : <Navigate to="/login" />} />
+              {/* Admin route - accessible if role is admin OR email is admin email */}
+              <Route path="/admin" element={
+                !user 
+                  ? <Navigate to="/admin-login" />
+                  : (user.role === 'admin' || isAdminEmail(user.email)) 
+                    ? <Admin user={user} /> 
+                    : <Navigate to="/" />
+              } />
+              <Route path="*" element={<Navigate to={isProfileIncomplete ? "/profile" : "/"} />} />
+            </Routes>
+          </Suspense>
         </div>
-        {user && isProfileIncomplete && location.pathname !== '/profile' && <Navigate to="/profile" replace />}
+        {user && isProfileIncomplete && location.pathname !== '/profile' && !isAdminEmail(user.email) && user.role !== 'admin' && <Navigate to="/profile" replace />}
       </main>
     </div>
   )
