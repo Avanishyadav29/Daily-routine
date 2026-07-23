@@ -63,7 +63,6 @@ export default function Login({ onLogin, onSignup }) {
       }
 
       if (!isValidEmail(formData.email)) { setError('Invalid email format.'); return }
-      if (!formData.mobile.trim()) { setError('Please enter your mobile number'); return }
       if (formData.password.length < 4) { setError('Password must be at least 4 characters'); return }
       
       setLoading(true)
@@ -179,8 +178,18 @@ export default function Login({ onLogin, onSignup }) {
                   </div>
                 </div>
                 <div>
-                  <label className="block mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300">Mobile Number</label>
-                  <input className="input-field" type="tel" name="mobile" placeholder="+91 9876543210" value={formData.mobile} onChange={handleChange} />
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Mobile (Optional)</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                      <span className="text-slate-400 dark:text-slate-500 font-bold text-sm">+91</span>
+                    </div>
+                    <input
+                      name="mobile" type="tel" maxLength="10"
+                      className="w-full bg-slate-50 dark:bg-[#1a1c23] border border-slate-200 dark:border-slate-800 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                      placeholder="9876543210"
+                      value={formData.mobile} onChange={handleChange}
+                    />
+                  </div>
                 </div>
               </>
             )}

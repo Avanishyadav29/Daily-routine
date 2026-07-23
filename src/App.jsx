@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useNavigate, Link, useLocation } from 'react-router-dom'
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'firebase/auth'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, sendEmailVerification } from 'firebase/auth'
 import { doc, setDoc, getDoc, updateDoc, onSnapshot, collection, query, limit } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import Navbar from './components/Navbar'
@@ -157,6 +157,12 @@ function App() {
     const cred = await signInWithEmailAndPassword(auth, email, password)
     const isAdm = isAdminEmail(email)
     
+    // Check if email is verified
+    if (!isAdm && !cred.user.emailVerified) {
+      await signOut(auth)
+      throw new Error('Please verify your email address before logging in. Check your inbox for the verification link.')
+    }
+    
     try {
       await setDoc(doc(db, 'users', cred.user.uid), { 
         sessionId: currentSession,
@@ -188,6 +194,10 @@ function App() {
   const handleSignup = async (email, password, name, mobile, username) => {
     const isAdm = isAdminEmail(email)
     const cred = await createUserWithEmailAndPassword(auth, email, password)
+    
+    // Send verification email
+    await sendEmailVerification(cred.user)
+    
     await updateProfile(cred.user, { displayName: name })
     await setDoc(doc(db, 'users', cred.user.uid), { 
       name, 
@@ -201,6 +211,12 @@ function App() {
       createdAt: new Date().toISOString(),
       sessionId: currentSession 
     }, { merge: true })
+    
+    // Sign out the user immediately so they must verify email to log back in
+    if (!isAdm) {
+      await signOut(auth)
+    }
+    
     navigate('/')
   }
 
