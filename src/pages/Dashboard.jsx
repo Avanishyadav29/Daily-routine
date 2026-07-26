@@ -1,18 +1,37 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, Trash2, Clock, CheckCircle2, Circle, Edit2, Calendar } from 'lucide-react'
+import { Plus, Trash2, Clock, CheckCircle2, Circle, Edit2, Calendar, Medal, Lock } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import {
   collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy
 } from 'firebase/firestore'
 
+// ── Badge definitions (same as Badges page) ────────────────────────────
+const ALL_BADGES = [
+  { id: 'first_session',   icon: '🚀', title: 'First Step',     color: 'from-blue-500 to-cyan-500',     check: (s) => s.length >= 1 },
+  { id: 'sessions_5',      icon: '🔥', title: 'On Fire',        color: 'from-orange-500 to-red-500',    check: (s) => s.length >= 5 },
+  { id: 'sessions_10',     icon: '⚡', title: 'Power User',     color: 'from-yellow-400 to-orange-500', check: (s) => s.length >= 10 },
+  { id: 'sessions_25',     icon: '💎', title: 'Diamond Focus',  color: 'from-violet-500 to-indigo-500', check: (s) => s.length >= 25 },
+  { id: 'sessions_50',     icon: '👑', title: 'Legend',         color: 'from-yellow-400 to-yellow-600', check: (s) => s.length >= 50 },
+  { id: 'coding_badge',    icon: '💻', title: 'Code Wizard',    color: 'from-green-500 to-emerald-600', check: (s) => s.filter(x => x.category === 'Coding').length >= 3 },
+  { id: 'writing_badge',   icon: '✍️', title: 'Wordsmith',      color: 'from-pink-500 to-rose-500',     check: (s) => s.filter(x => x.category === 'Writing').length >= 3 },
+  { id: 'learning_badge',  icon: '📚', title: 'Scholar',        color: 'from-sky-500 to-blue-600',      check: (s) => s.filter(x => x.category === 'Learning').length >= 3 },
+  { id: 'debug_badge',     icon: '🔍', title: 'Bug Slayer',     color: 'from-red-500 to-rose-600',      check: (s) => s.filter(x => x.category === 'Debugging').length >= 3 },
+  { id: 'research_badge',  icon: '🔬', title: 'Researcher',     color: 'from-purple-500 to-violet-600', check: (s) => s.filter(x => x.category === 'Research').length >= 3 },
+  { id: 'allcat_badge',    icon: '🌈', title: 'Renaissance',    color: 'from-fuchsia-500 to-pink-500',  check: (s) => { const cats = new Set(s.map(x => x.category).filter(Boolean)); return ['Coding','Writing','Learning','Debugging','Research'].every(c => cats.has(c)) } },
+  { id: 'hour_focus',      icon: '⏰', title: 'Hour Champion',  color: 'from-teal-500 to-cyan-500',     check: (s) => s.reduce((a,b) => a + (b.duration||0), 0) >= 3600 },
+  { id: 'fivehour_focus',  icon: '🏆', title: 'Focus Master',   color: 'from-amber-400 to-yellow-600',  check: (s) => s.reduce((a,b) => a + (b.duration||0), 0) >= 18000 },
+  { id: 'focus_45_badge',  icon: '🎯', title: 'Deep Diver',     color: 'from-blue-600 to-indigo-600',   check: (s) => s.some(x => x.mode === 'FOCUS_45') },
+]
+
 export default function Dashboard({ user }) {
   const [routines, setRoutines] = useState([])
   const [newRoutine, setNewRoutine] = useState({ title: '', date: '', category: 'Coding' })
   const [isAdding, setIsAdding] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
+  const [sessions, setSessions] = useState([])
 
-  // Real-time listener from Firestore
+  // Real-time listener from Firestore — routines
   useEffect(() => {
     if (!user?.uid) return
     const q = query(collection(db, 'users', user.uid, 'routines'), orderBy('createdAt', 'asc'))
@@ -20,6 +39,16 @@ export default function Dashboard({ user }) {
       const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
       setRoutines(items)
       setLoadingData(false)
+    })
+    return () => unsub()
+  }, [user?.uid])
+
+  // Real-time listener — timer sessions (for badges)
+  useEffect(() => {
+    if (!user?.uid) return
+    const q = query(collection(db, 'users', user.uid, 'sessions'), orderBy('startedAt', 'desc'))
+    const unsub = onSnapshot(q, (snap) => {
+      setSessions(snap.docs.map(d => d.data()))
     })
     return () => unsub()
   }, [user?.uid])
@@ -52,6 +81,13 @@ export default function Dashboard({ user }) {
   const completedCount = routines.filter(r => r.isCompleted).length
   const totalCount = routines.length
   const progress = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100)
+
+  // Badge computation
+  const focusSessions = sessions.filter(s => s.completed && s.mode !== 'BREAK')
+  const earned = ALL_BADGES.filter(b => b.check(focusSessions))
+  const locked = ALL_BADGES.filter(b => !b.check(focusSessions))
+  // Show max 6 locked badges as preview
+  const lockedPreview = locked.slice(0, 6)
 
   return (
     <div className="max-w-3xl mx-auto animate-fade-in pb-10">
@@ -105,6 +141,7 @@ export default function Dashboard({ user }) {
         </div>
       </div>
 
+      {/* Tasks Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Your Tasks</h2>
         <button className="btn-primary w-full sm:w-auto shadow-lg shadow-blue-500/20" onClick={() => setIsAdding(!isAdding)}>
@@ -143,7 +180,7 @@ export default function Dashboard({ user }) {
         </form>
       )}
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 mb-12">
         {loadingData ? (
           <div className="text-center p-12">
             <div className="w-10 h-10 rounded-full border-4 border-blue-500 border-t-transparent animate-spin mx-auto mb-4"></div>
@@ -194,6 +231,112 @@ export default function Dashboard({ user }) {
           ))
         )}
       </div>
+
+      {/* ── Badges Section ──────────────────────────────────────────── */}
+      <div className="mb-2">
+        {/* Section Header */}
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-tr from-yellow-400 to-orange-500 rounded-xl text-white shadow-lg shadow-orange-500/20">
+              <Medal className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Your Badges</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {earned.length} earned · {locked.length} remaining
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/badges"
+            className="text-sm font-semibold px-4 py-2 rounded-xl transition-all
+              bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300
+              hover:bg-violet-500/10 hover:text-violet-500 dark:hover:text-violet-400
+              border border-slate-200 dark:border-slate-700/50
+              hover:border-violet-500/30"
+          >
+            View All →
+          </Link>
+        </div>
+
+        {/* Earned Badges */}
+        {earned.length > 0 ? (
+          <div className="mb-5">
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3 ml-1">
+              🏅 Earned ({earned.length})
+            </p>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+              {earned.map(badge => (
+                <div
+                  key={badge.id}
+                  className="group relative flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all duration-200 hover:-translate-y-1 cursor-default"
+                  style={{
+                    background: 'rgba(18,20,31,0.6)',
+                    borderColor: 'rgba(139,92,246,0.15)',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(139,92,246,0.4)'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(139,92,246,0.15)'}
+                >
+                  {/* glow bg */}
+                  <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity bg-gradient-to-br ${badge.color}`} />
+                  {/* icon */}
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${badge.color} flex items-center justify-center text-xl shadow-lg z-10`}>
+                    {badge.icon}
+                  </div>
+                  <span className="text-[11px] font-bold text-white text-center leading-tight z-10">{badge.title}</span>
+                  {/* earned checkmark */}
+                  <span className="absolute top-2 right-2 text-green-400 text-[10px] font-black">✓</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div
+            className="flex flex-col items-center justify-center py-8 rounded-2xl mb-5 border border-dashed"
+            style={{ borderColor: 'rgba(139,92,246,0.2)', background: 'rgba(139,92,246,0.03)' }}
+          >
+            <span className="text-3xl mb-2">🎯</span>
+            <p className="text-sm font-semibold text-slate-400">Complete a timer session to earn your first badge!</p>
+            <Link to="/timer" className="mt-3 text-xs font-bold text-violet-400 hover:text-violet-300 transition-colors">
+              Start Timer →
+            </Link>
+          </div>
+        )}
+
+        {/* Locked Badges Preview */}
+        {lockedPreview.length > 0 && (
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3 ml-1">
+              🔒 Next to Unlock
+            </p>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+              {lockedPreview.map(badge => (
+                <div
+                  key={badge.id}
+                  className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-slate-800/40 opacity-40 grayscale cursor-default"
+                  style={{ background: 'rgba(18,20,31,0.4)' }}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-lg">
+                    {badge.icon}
+                  </div>
+                  <span className="text-[10px] font-semibold text-slate-500 text-center leading-tight">{badge.title}</span>
+                  <Lock className="w-3 h-3 text-slate-600 -mt-1" />
+                </div>
+              ))}
+            </div>
+            {locked.length > 6 && (
+              <Link
+                to="/badges"
+                className="block text-center mt-4 text-xs font-bold text-slate-500 hover:text-violet-400 transition-colors"
+              >
+                +{locked.length - 6} more badges to unlock →
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
+
     </div>
   )
 }

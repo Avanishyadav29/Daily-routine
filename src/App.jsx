@@ -45,6 +45,11 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [unreadCounts, setUnreadCounts] = useState({ inbox: 0, announcements: 0, townhall: 0 })
   const [isProfileIncomplete, setIsProfileIncomplete] = useState(false)
+  // In-memory last-checked timestamps (synced with localStorage but immediately reactive)
+  const lastCheckedRef = useRef({
+    announcements: localStorage.getItem('last_announcement_check') || new Date(0).toISOString(),
+    townhall: localStorage.getItem('last_townhall_check') || new Date(0).toISOString(),
+  })
   const [currentSession] = useState(() => {
     let sess = sessionStorage.getItem('daily_routine_session_id')
     if (!sess) {
@@ -145,16 +150,23 @@ function App() {
         // Announcements listener for badge
         const qAnn = query(collection(db, 'announcements'), limit(20))
         const unsubAnn = onSnapshot(qAnn, (snap) => {
-          const lastChecked = localStorage.getItem('last_announcement_check') || new Date(0).toISOString()
-          const novel = snap.docs.filter(d => (d.data().createdAt > lastChecked || !lastChecked) && d.data().fromUid !== firebaseUser.uid).length
+          // Use in-memory ref so clearBadge takes effect immediately without waiting for next snapshot
+          const lastChecked = lastCheckedRef.current.announcements
+          const novel = isAdm ? 0 : snap.docs.filter(d => {
+            const data = d.data()
+            return data.createdAt > lastChecked && data.fromUid !== firebaseUser.uid
+          }).length
           setUnreadCounts(prev => ({ ...prev, announcements: novel }))
         })
 
         // Townhall listener for badge
         const qTH = query(collection(db, 'townhall'), limit(20))
         const unsubTH = onSnapshot(qTH, (snap) => {
-          const lastTH = localStorage.getItem('last_townhall_check') || new Date(0).toISOString()
-          const novel = snap.docs.filter(d => d.data().createdAt > lastTH && d.data().fromUid !== firebaseUser.uid).length
+          const lastTH = lastCheckedRef.current.townhall
+          const novel = snap.docs.filter(d => {
+            const data = d.data()
+            return data.createdAt > lastTH && data.fromUid !== firebaseUser.uid
+          }).length
           setUnreadCounts(prev => ({ ...prev, townhall: novel }))
         })
 
@@ -184,7 +196,11 @@ function App() {
   }, [])
 
   const clearBadge = (type) => {
-    localStorage.setItem(`last_${type}_check`, new Date().toISOString())
+    const now = new Date().toISOString()
+    localStorage.setItem(`last_${type}_check`, now)
+    // Update in-memory ref immediately so onSnapshot callbacks see the new timestamp
+    if (type === 'announcements') lastCheckedRef.current.announcements = now
+    if (type === 'townhall') lastCheckedRef.current.townhall = now
     setUnreadCounts(prev => ({ ...prev, [type]: 0 }))
   }
 
@@ -359,7 +375,7 @@ function App() {
             </div>
           }>
             <Routes>
-              <Route path="/login" element={user ? <Navigate to="/" /> : <Login onLogin={handleLogin} onSignup={handleSignup} onGoogleLogin={handleGoogleLogin} />} />
+              <Route path="/login" element={user ? <Navigate to="/" /> : <Login onLogin={handleLogin} onSignup={handleSignup} onGoogleLogin={handleGoogleLogin} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
               {/* Admin Dedicated Login - if user is logged in, redirect to admin or home */}
               <Route path="/admin-login" element={
                 user 
