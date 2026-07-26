@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Play, Pause, RotateCcw, Coffee, Zap, CheckCircle2, Clock, AlertTriangle, BellOff, Bell, ChevronDown, Square } from 'lucide-react'
 import { db } from '../firebase'
-import { collection, addDoc, doc, updateDoc, onSnapshot, query, orderBy } from 'firebase/firestore'
+import { collection, addDoc, doc, updateDoc, onSnapshot, query, orderBy, limit } from 'firebase/firestore'
 
 const MODES = {
   FOCUS_45: { label: '45 Min Focus', duration: 45 * 60, color: 'from-blue-600 to-indigo-600' },
