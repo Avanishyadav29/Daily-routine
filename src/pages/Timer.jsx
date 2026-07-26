@@ -84,6 +84,7 @@ export default function Timer({ user }) {
   const [heatmapData, setHeatmapData] = useState({})
   const [allSessions, setAllSessions] = useState([])
   const [tooltip, setTooltip] = useState(null)
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const intervalRef = useRef(null)
   const startTimeRef = useRef(null)
   const isTerminatingRef = useRef(false)
@@ -392,52 +393,81 @@ export default function Timer({ user }) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto animate-fade-in pb-10 px-4 text-slate-700 dark:text-slate-300">
-      
-      {/* Warning Banner */}
-      <div className="flex items-start gap-3 p-4 mb-6 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
-        <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-400" />
-        <div>
-          <p className="text-sm font-semibold text-amber-400">{completedSessions} sessions logged today · {formatTime(totalToday)} focused</p>
-          <p className="text-xs text-slate-500 mt-0.5">Completing tasks builds skills. Your progress is tracked and reviewed.</p>
+    <div
+      className="max-w-4xl mx-auto animate-fade-in pb-10 px-4 text-slate-700 dark:text-slate-300"
+      onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
+    >
+
+      {/* ── Page Header ── */}
+      <div className="mb-8">
+        <div className="flex items-center gap-4 mb-2">
+          <div className="p-3 bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 rounded-2xl shadow-xl shadow-blue-600/30">
+            <Clock className="w-7 h-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-none">
+              Time <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-500">Arena</span>
+            </h1>
+            <p className="text-slate-400 text-sm mt-1 font-medium">Track your focus · Build your streak · Own your time</p>
+          </div>
+        </div>
+        {/* Stats row */}
+        <div className="flex items-center gap-4 mt-4 flex-wrap">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full">
+            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+            <span className="text-xs font-bold text-blue-400">{completedSessions} sessions today</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full">
+            <Zap className="w-3 h-3 text-indigo-400" />
+            <span className="text-xs font-bold text-indigo-400">{formatTime(totalToday)} focused today</span>
+          </div>
+          {activeUsersCount > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-full">
+              <Zap className="w-3 h-3 text-orange-400 animate-pulse" />
+              <span className="text-xs font-bold text-orange-400">{activeUsersCount} others focusing now</span>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="relative bg-white dark:bg-[#0f1117] border border-slate-200 dark:border-white/[0.06] rounded-3xl p-5 sm:p-8 shadow-2xl overflow-hidden">
-        {/* Glow effect */}
-        <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-72 h-40 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-        {/* Header */}
+      {/* ── Warning Banner ── */}
+      <div className="flex items-start gap-3 p-4 mb-5 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
+        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+        <p className="text-xs text-slate-500">Completing tasks builds skills — not just running timers. Your progress is tracked.</p>
+      </div>
+
+      <div className="relative bg-white dark:bg-[#0d0f16] border border-slate-200 dark:border-white/[0.06] rounded-3xl p-5 sm:p-8 shadow-2xl overflow-hidden">
+        {/* Ambient glow */}
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-48 bg-blue-600/8 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-10 right-10 w-40 h-40 bg-indigo-600/5 rounded-full blur-2xl pointer-events-none" />
+
+        {/* Card Header */}
         <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/30">
-              <Clock className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="text-xl font-black text-slate-900 dark:text-white tracking-tight leading-none">Time Arena</div>
-              <div className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-0.5">Focus Mode</div>
-            </div>
+          <div className="flex items-center gap-2 text-slate-400">
+            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-xs font-bold uppercase tracking-widest">Focus Session</span>
           </div>
           <div className="flex items-center gap-2">
+            {/* Active users pill */}
             {activeUsersCount > 0 && (
               <div className="group relative flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-full cursor-pointer animate-fade-in">
-                <Zap className="w-4 h-4 text-orange-500 animate-pulse" />
-                <span className="text-xs font-bold text-orange-600 dark:text-orange-400">{activeUsersCount} Active</span>
-                
-                {/* Tooltip */}
-                <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-200 dark:border-slate-700 pb-1">Focusing Now</p>
+                <Zap className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
+                <span className="text-xs font-bold text-orange-500">{activeUsersCount} Active</span>
+                {/* Dropdown tooltip */}
+                <div className="absolute top-full right-0 mt-2 w-48 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-700 pb-1">Focusing Now</p>
                   <div className="space-y-1.5">
                     {Object.entries(activeCategories).map(([cat, cnt]) => (
                       <div key={cat} className="flex items-center justify-between text-xs font-bold">
-                        <span className="text-slate-600 dark:text-slate-300 truncate pr-2">{cat}</span>
-                        <span className="text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-md">{cnt}</span>
+                        <span className="text-slate-300 truncate pr-2">{cat}</span>
+                        <span className="text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">{cnt}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
             )}
-            <button onClick={() => setIsMuted(!isMuted)} className={`p-2.5 rounded-xl transition-colors text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800/50 ${isMuted ? 'bg-orange-500/10 text-orange-500 border-orange-500/30' : 'bg-slate-100 dark:bg-[#1e2129] hover:bg-slate-200 dark:hover:bg-[#262a33]'}`}>
+            <button onClick={() => setIsMuted(!isMuted)} className={`p-2 rounded-xl transition-colors border ${isMuted ? 'bg-orange-500/10 text-orange-500 border-orange-500/30' : 'bg-slate-100 dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.08] text-slate-400 hover:text-slate-600 dark:hover:text-white'}`}>
               {isMuted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
             </button>
           </div>
@@ -660,14 +690,9 @@ export default function Timer({ user }) {
                   cell ? (
                     <div
                       key={di}
-                      className={`w-[11px] h-[11px] rounded-sm cursor-pointer transition-all duration-150 hover:ring-2 hover:ring-blue-400 hover:ring-offset-1 hover:ring-offset-[#0f1117] ${levelColors[cell.level]}`}
+                      className={`w-[11px] h-[11px] rounded-sm cursor-pointer transition-all duration-150 hover:scale-125 hover:ring-2 hover:ring-blue-400 hover:ring-offset-1 dark:hover:ring-offset-[#0d0f16] ${levelColors[cell.level]}`}
                       onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect()
-                        setTooltip({
-                          x: rect.left + window.scrollX,
-                          y: rect.top + window.scrollY,
-                          cell
-                        })
+                        setTooltip(cell)
                       }}
                       onMouseLeave={() => setTooltip(null)}
                     />
@@ -681,32 +706,43 @@ export default function Timer({ user }) {
         </div>
       </div>
 
-      {/* Floating Tooltip */}
+      {/* Floating Tooltip — follows mouse */}
       {tooltip && (
         <div
-          className="fixed z-[999] pointer-events-none bg-slate-900 border border-slate-700 rounded-xl shadow-2xl px-4 py-3 text-sm min-w-[200px] max-w-[260px]"
-          style={{ left: tooltip.x - 100, top: tooltip.y - 130 }}
+          className="fixed z-[999] pointer-events-none bg-[#0d0f16] border border-slate-700/80 rounded-2xl shadow-2xl shadow-black/50 px-4 py-3.5 min-w-[210px] max-w-[270px] backdrop-blur-sm"
+          style={{
+            left: Math.min(mousePos.x + 14, window.innerWidth - 280),
+            top: mousePos.y - 140 < 10 ? mousePos.y + 20 : mousePos.y - 140,
+          }}
         >
-          <div className="font-bold text-white mb-1">
-            {tooltip.cell.date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+          {/* Arrow indicator */}
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-2.5 h-2.5 rounded-sm ${levelColors[tooltip.level]}`} />
+            <div className="font-bold text-white text-xs">
+              {tooltip.date.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}
+            </div>
           </div>
-          {tooltip.cell.secs > 0 ? (
+          {tooltip.secs > 0 ? (
             <>
-              <div className="text-blue-400 font-black text-base mb-2">{formatTime(tooltip.cell.secs)} focused</div>
-              <div className="space-y-1 border-t border-slate-700 pt-2">
-                {tooltip.cell.data?.sessions.slice(0, 4).map((s, i) => (
+              <div className="text-blue-400 font-black text-xl mb-3 leading-none">{formatTime(tooltip.secs)} <span className="text-sm font-semibold text-slate-400">focused</span></div>
+              <div className="space-y-1.5 border-t border-slate-700/60 pt-2.5">
+                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">{tooltip.data?.sessions.length} session{tooltip.data?.sessions.length > 1 ? 's' : ''}</div>
+                {tooltip.data?.sessions.slice(0, 4).map((s, i) => (
                   <div key={i} className="flex items-center justify-between gap-3">
-                    <span className="text-slate-300 text-xs truncate">{s.task}</span>
-                    <span className="text-slate-400 text-xs shrink-0">{formatTime(s.duration)}</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                      <span className="text-slate-300 text-xs truncate">{s.task}</span>
+                    </div>
+                    <span className="text-blue-400 text-xs font-bold shrink-0">{formatTime(s.duration)}</span>
                   </div>
                 ))}
-                {(tooltip.cell.data?.sessions.length || 0) > 4 && (
-                  <div className="text-slate-500 text-[10px] pt-1">+{tooltip.cell.data.sessions.length - 4} more sessions</div>
+                {(tooltip.data?.sessions.length || 0) > 4 && (
+                  <div className="text-slate-500 text-[10px] pt-1">+{tooltip.data.sessions.length - 4} more sessions</div>
                 )}
               </div>
             </>
           ) : (
-            <div className="text-slate-500 text-xs">No sessions on this day</div>
+            <div className="text-slate-500 text-xs">No focus sessions recorded</div>
           )}
         </div>
       )}
