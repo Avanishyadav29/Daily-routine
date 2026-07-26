@@ -1,6 +1,6 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, lazy, Suspense, useRef } from 'react'
 import { Routes, Route, Navigate, useNavigate, Link, useLocation } from 'react-router-dom'
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, sendEmailVerification } from 'firebase/auth'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, sendEmailVerification, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { doc, setDoc, getDoc, updateDoc, onSnapshot, collection, query, limit } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import Navbar from './components/Navbar'
@@ -27,9 +27,17 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [unreadCounts, setUnreadCounts] = useState({ inbox: 0, announcements: 0, townhall: 0 })
   const [isProfileIncomplete, setIsProfileIncomplete] = useState(false)
-  const [currentSession] = useState(() => Math.random().toString(36).substring(7))
+  const [currentSession] = useState(() => {
+    let sess = sessionStorage.getItem('daily_routine_session_id')
+    if (!sess) {
+      sess = Math.random().toString(36).substring(7)
+      sessionStorage.setItem('daily_routine_session_id', sess)
+    }
+    return sess
+  })
   const navigate = useNavigate()
   const location = useLocation()
+  const isLoggingInRef = useRef(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('daily_routine_theme')
@@ -79,9 +87,13 @@ function App() {
           
           // Single Session Enforcement (Skip for Admins)
           if (!isAdm && data.sessionId && data.sessionId !== currentSession) {
-             handleLogout()
-             alert("Session Expired: You have been logged in on another device.")
-             return
+             if (isLoggingInRef.current) {
+                console.log("Skipping session check during login phase...")
+             } else {
+                handleLogout()
+                alert("Session Expired: You have been logged in on another device.")
+                return
+             }
           }
 
           const hasUsername = data.username && data.name
@@ -154,67 +166,77 @@ function App() {
   }
 
   const handleLogin = async (email, password) => {
-    const cred = await signInWithEmailAndPassword(auth, email, password)
-    const isAdm = isAdminEmail(email)
-    
-    // Check if email is verified
-    if (!isAdm && !cred.user.emailVerified) {
-      await signOut(auth)
-      throw new Error('Please verify your email address before logging in. Check your inbox (and spam folder) for the verification link.')
-    }
-    
+    isLoggingInRef.current = true
     try {
-      await setDoc(doc(db, 'users', cred.user.uid), { 
-        sessionId: currentSession,
-        email: email,
-        role: isAdm ? 'admin' : 'user'
-      }, { merge: true })
-
-      if (isAdm) {
-         await setDoc(doc(db, 'users', cred.user.uid, 'sessions', currentSession), { 
-            userAgent: navigator.userAgent, 
-            lastActive: new Date().toISOString(),
-            ip: 'unavailable'
-         }, { merge: true })
+      const cred = await signInWithEmailAndPassword(auth, email, password)
+      const isAdm = isAdminEmail(email)
+      
+      // Check if email is verified
+      if (!isAdm && !cred.user.emailVerified) {
+        await signOut(auth)
+        throw new Error('Please verify your email address before logging in. Check your inbox (and spam folder) for the verification link.')
       }
-    } catch (firestoreErr) {
-      console.warn("Firestore session sync error:", firestoreErr)
+      
+      try {
+        await setDoc(doc(db, 'users', cred.user.uid), { 
+          sessionId: currentSession,
+          email: email,
+          role: isAdm ? 'admin' : 'user'
+        }, { merge: true })
+
+        if (isAdm) {
+           await setDoc(doc(db, 'users', cred.user.uid, 'sessions', currentSession), { 
+              userAgent: navigator.userAgent, 
+              lastActive: new Date().toISOString(),
+              ip: 'unavailable'
+           }, { merge: true })
+        }
+      } catch (firestoreErr) {
+        console.warn("Firestore session sync error:", firestoreErr)
+      }
+      
+      // Navigate based on role
+      if (isAdm) {
+        navigate('/admin')
+      } else {
+        navigate('/')
+      }
+      
+      return isAdm
+    } finally {
+      isLoggingInRef.current = false
     }
-    
-    // Navigate based on role
-    if (isAdm) {
-      navigate('/admin')
-    } else {
-      navigate('/')
-    }
-    
-    return isAdm
   }
 
   const handleSignup = async (email, password, name, mobile, username) => {
-    const isAdm = isAdminEmail(email)
-    const cred = await createUserWithEmailAndPassword(auth, email, password)
-    
-    // Send verification email
-    await sendEmailVerification(cred.user)
-    
-    await updateProfile(cred.user, { displayName: name })
-    await setDoc(doc(db, 'users', cred.user.uid), { 
-      name, 
-      username: username || '', 
-      email, 
-      mobile: mobile || '', 
-      photo: '', 
-      isBlocked: false, 
-      violation: false, 
-      role: isAdm ? 'admin' : 'user',
-      createdAt: new Date().toISOString(),
-      sessionId: currentSession 
-    }, { merge: true })
-    
-    // Sign out the user immediately so they must verify email to log back in
-    if (!isAdm) {
-      await signOut(auth)
+    isLoggingInRef.current = true
+    try {
+      const isAdm = isAdminEmail(email)
+      const cred = await createUserWithEmailAndPassword(auth, email, password)
+      
+      // Send verification email
+      await sendEmailVerification(cred.user)
+      
+      await updateProfile(cred.user, { displayName: name })
+      await setDoc(doc(db, 'users', cred.user.uid), { 
+        name, 
+        username: username || '', 
+        email, 
+        mobile: mobile || '', 
+        photo: '', 
+        isBlocked: false, 
+        violation: false, 
+        role: isAdm ? 'admin' : 'user',
+        createdAt: new Date().toISOString(),
+        sessionId: currentSession 
+      }, { merge: true })
+      
+      // Sign out the user immediately so they must verify email to log back in
+      if (!isAdm) {
+        await signOut(auth)
+      }
+    } finally {
+      isLoggingInRef.current = false
     }
   }
 
@@ -228,6 +250,52 @@ function App() {
     if (user?.uid) await updateDoc(doc(db, 'users', user.uid), { activeSession: null }).catch(() => {})
     await signOut(auth)
     navigate('/login')
+  }
+
+  const handleGoogleLogin = async () => {
+    isLoggingInRef.current = true
+    try {
+      const provider = new GoogleAuthProvider()
+      const cred = await signInWithPopup(auth, provider)
+      const isAdm = isAdminEmail(cred.user.email)
+      
+      const userDocRef = doc(db, 'users', cred.user.uid)
+      const userDoc = await getDoc(userDocRef)
+      
+      if (!userDoc.exists()) {
+        await setDoc(userDocRef, {
+          name: cred.user.displayName || 'User',
+          username: '',
+          email: cred.user.email,
+          photo: cred.user.photoURL || '',
+          isBlocked: false,
+          violation: false,
+          role: isAdm ? 'admin' : 'user',
+          createdAt: new Date().toISOString(),
+          sessionId: currentSession
+        }, { merge: true })
+      } else {
+        await setDoc(userDocRef, {
+          sessionId: currentSession
+        }, { merge: true })
+      }
+
+      if (isAdm) {
+         await setDoc(doc(db, 'users', cred.user.uid, 'sessions', currentSession), { 
+            userAgent: navigator.userAgent, 
+            lastActive: new Date().toISOString(),
+            ip: 'unavailable'
+         }, { merge: true })
+      }
+
+      if (isAdm) navigate('/admin')
+      else navigate('/')
+    } catch (err) {
+      console.error("Google Login Error:", err)
+      throw err
+    } finally {
+      isLoggingInRef.current = false
+    }
   }
 
   if (loading) return (
@@ -267,7 +335,7 @@ function App() {
             </div>
           }>
             <Routes>
-              <Route path="/login" element={user ? <Navigate to="/" /> : <Login onLogin={handleLogin} onSignup={handleSignup} />} />
+              <Route path="/login" element={user ? <Navigate to="/" /> : <Login onLogin={handleLogin} onSignup={handleSignup} onGoogleLogin={handleGoogleLogin} />} />
               {/* Admin Dedicated Login - if user is logged in, redirect to admin or home */}
               <Route path="/admin-login" element={
                 user 
@@ -280,7 +348,7 @@ function App() {
               <Route path="/timer" element={user ? <div className="hidden"></div> : <Navigate to="/login" />} />
               
               <Route path="/leaderboard" element={user ? <Leaderboard user={user} /> : <Navigate to="/login" />} />
-              <Route path="/inbox" element={user ? <Inbox user={user} clearBadge={() => clearBadge('inbox')} /> : <Navigate to="/login" />} />
+              <Route path="/inbox" element={user ? (isAdminEmail(user.email) || user.role === 'admin' ? <Inbox user={user} clearBadge={() => clearBadge('inbox')} /> : <Navigate to="/townhall" />) : <Navigate to="/login" />} />
               <Route path="/announcements" element={user ? <Announcements user={user} clearBadge={() => clearBadge('announcements')} /> : <Navigate to="/login" />} />
               <Route path="/townhall" element={user ? <Townhall user={user} clearBadge={() => clearBadge('townhall')} /> : <Navigate to="/login" />} />
               <Route path="/badges" element={user ? <Badges user={user} /> : <Navigate to="/login" />} />

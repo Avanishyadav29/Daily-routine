@@ -10,16 +10,16 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme, unread
   if (!user) return null
 
   const navLinks = [
-    { to: '/', icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
-    { to: '/timer', icon: <Timer className="w-5 h-5" />, label: 'Timer' },
-    { to: '/leaderboard', icon: <Trophy className="w-5 h-5" />, label: 'Board' },
-    { to: '/badges', icon: <Medal className="w-5 h-5" />, label: 'Badges' },
-    { to: '/inbox', icon: <MessageSquare className="w-5 h-5" />, label: 'Inbox', badge: unreadCounts?.inbox },
-    { to: '/announcements', icon: <Megaphone className="w-5 h-5" />, label: 'Announcements', badge: unreadCounts?.announcements },
-    { to: '/townhall', icon: <MessageCircle className="w-5 h-5" />, label: 'Townhall', badge: unreadCounts?.townhall },
+    { to: '/', icon: <LayoutDashboard className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />, label: 'Dashboard' },
+    { to: '/townhall', icon: <MessageCircle className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />, label: 'Townhall', badge: unreadCounts?.townhall },
+    { to: '/timer', icon: <Timer className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />, label: 'Timer' },
+    { to: '/leaderboard', icon: <Trophy className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />, label: 'Board' },
+    { to: '/badges', icon: <Medal className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />, label: 'Badges' },
+    { to: '/announcements', icon: <Megaphone className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />, label: 'Announcements', badge: unreadCounts?.announcements },
+    ...(isAdminUser(user) ? [{ to: '/inbox', icon: <MessageSquare className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />, label: 'Inbox', badge: unreadCounts?.inbox }] : []),
     ...(!isAdminUser(user)
-      ? [{ to: '/feedback', icon: <MessageCircle className="w-5 h-5" />, label: 'Feedback' }] 
-      : [{ to: '/admin', icon: <Shield className="w-5 h-5" />, label: 'Admin Dashboard' }]
+      ? [{ to: '/feedback', icon: <MessageCircle className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />, label: 'Feedback' }] 
+      : [{ to: '/admin', icon: <Shield className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />, label: 'Admin Dashboard' }]
     ),
   ]
 

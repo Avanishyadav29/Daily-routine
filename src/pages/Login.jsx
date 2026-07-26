@@ -22,7 +22,7 @@ const getEmailByUsername = async (username) => {
   return null
 }
 
-export default function Login({ onLogin, onSignup }) {
+export default function Login({ onLogin, onSignup, onGoogleLogin }) {
   const [mode, setMode] = useState('login') // 'login' | 'signup' | 'forgot'
   const [formData, setFormData] = useState({ name: '', username: '', email: '', password: '', mobile: '', loginInput: '' })
   const [error, setError] = useState('')
@@ -42,8 +42,9 @@ export default function Login({ onLogin, onSignup }) {
       if (!isValidEmail(formData.email)) { setError('Invalid email format.'); return }
       setLoading(true)
       try {
-        await sendPasswordResetEmail(auth, formData.email)
-        setSuccess('Password reset email sent! Check your inbox.')
+        const cleanEmail = formData.email.trim().toLowerCase()
+        await sendPasswordResetEmail(auth, cleanEmail)
+        setSuccess('Password reset email sent! Check your inbox,Also check Spam Folder.')
       } catch (err) {
         setError('Could not send reset email. Check if the email is registered.')
       } finally { setLoading(false) }
@@ -56,7 +57,7 @@ export default function Login({ onLogin, onSignup }) {
       const rawUsername = formData.username.replace(/^@/, '').trim()
       if (!rawUsername) { setError('Please enter a username'); return }
       if (!/^[a-zA-Z0-9]/.test(rawUsername)) { setError('Username must start with a letter or number.'); return }
-      
+
       if (isReservedUsername(rawUsername, formData.email)) {
         setError('This username is reserved for system admins. Please choose another username.')
         return
@@ -65,14 +66,15 @@ export default function Login({ onLogin, onSignup }) {
       if (!isValidEmail(formData.email)) { setError('Invalid email format.'); return }
       if (formData.password.length < 4) { setError('Password must be at least 4 characters'); return }
       
+      const cleanEmail = formData.email.trim().toLowerCase()
       setLoading(true)
       try {
         const isTaken = await getEmailByUsername(rawUsername)
-        if (isTaken) { 
+        if (isTaken) {
           setError(`Username @${rawUsername} is already taken. Please choose a different username.`)
-          return 
+          return
         }
-        await onSignup(formData.email, formData.password, formData.name, formData.mobile, rawUsername)
+        await onSignup(cleanEmail, formData.password, formData.name, formData.mobile, rawUsername)
         setSuccess('Account created! Please check your email (and spam folder) to verify your account before logging in.')
         setMode('login')
         setFormData(prev => ({ ...prev, password: '' }))
@@ -90,8 +92,8 @@ export default function Login({ onLogin, onSignup }) {
         } else {
           setError(err.message || 'Signup failed. Please try again.')
         }
-      } finally { 
-        setLoading(false) 
+      } finally {
+        setLoading(false)
       }
       return
     }
@@ -101,13 +103,13 @@ export default function Login({ onLogin, onSignup }) {
     const password = formData.password
     if (!input || !password) { setError('Please fill in all fields'); return }
 
-    let email = input
-    if (!isValidEmail(input)) {
+    let email = input.trim().toLowerCase()
+    if (!isValidEmail(email)) {
       // treat as username, look up email
       setLoading(true)
       const found = await getEmailByUsername(input)
       if (!found) { setError('No account found with this username.'); setLoading(false); return }
-      email = found
+      email = found.toLowerCase()
     }
 
     setLoading(true)
@@ -125,8 +127,8 @@ export default function Login({ onLogin, onSignup }) {
       } else {
         setError(err.message || 'Login failed. Please check your credentials.')
       }
-    } finally { 
-      setLoading(false) 
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -134,8 +136,8 @@ export default function Login({ onLogin, onSignup }) {
 
   return (
     <div className="flex items-center justify-center min-h-[88vh] relative">
-      <Link 
-        to="/admin-login" 
+      <Link
+        to="/admin-login"
         className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-full text-xs font-bold transition-colors"
       >
         <Shield className="w-3.5 h-3.5" />
@@ -174,7 +176,7 @@ export default function Login({ onLogin, onSignup }) {
                   <input className="input-field" type="text" name="name" placeholder="John Doe" value={formData.name} onChange={handleChange} />
                 </div>
                 <div>
-                  <label className="block mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1"><AtSign className="w-3.5 h-3.5 text-blue-500"/>Username <span className="text-red-500">*</span></label>
+                  <label className="block mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1"><AtSign className="w-3.5 h-3.5 text-blue-500" />Username <span className="text-red-500">*</span></label>
                   <div className="relative flex items-center">
                     <span className="absolute left-3.5 text-blue-500 font-bold">@</span>
                     <input className="input-field pl-8" type="text" name="username" placeholder="yourname123" value={formData.username.replace(/^@/, '')} onChange={handleChange} />
@@ -236,11 +238,41 @@ export default function Login({ onLogin, onSignup }) {
             <button type="submit" disabled={loading} className="btn-primary mt-2 disabled:opacity-60 disabled:cursor-not-allowed">
               {loading ? (
                 <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Please wait...</span>
-              ) : mode === 'login' ? <><LogIn className="w-5 h-5" /> Sign In</> 
+              ) : mode === 'login' ? <><LogIn className="w-5 h-5" /> Sign In</>
                 : mode === 'signup' ? <><UserPlus className="w-5 h-5" /> Sign Up</>
-                : <><Mail className="w-5 h-5" /> Send Reset Link</>}
+                  : <><Mail className="w-5 h-5" /> Send Reset Link</>}
             </button>
           </form>
+
+          {(mode === 'login' || mode === 'signup') && (
+            <>
+              <div className="flex items-center gap-4 my-6">
+                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700/50"></div>
+                <span className="text-sm font-medium text-slate-400 dark:text-slate-500">or</span>
+                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700/50"></div>
+              </div>
+              <button
+                onClick={async () => {
+                  setError('')
+                  try {
+                    await onGoogleLogin()
+                  } catch (err) {
+                    setError('Google sign-in failed or was cancelled.')
+                  }
+                }}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                </svg>
+                Continue with Google
+              </button>
+            </>
+          )}
 
           {/* Footer links */}
           <div className="mt-7 text-sm flex flex-col gap-2 items-center">

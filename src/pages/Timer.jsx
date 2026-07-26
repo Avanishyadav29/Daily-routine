@@ -70,6 +70,31 @@ export default function Timer({ user }) {
   const [cooldown, setCooldown] = useState(0)
   const intervalRef = useRef(null)
   const startTimeRef = useRef(null)
+  const isTerminatingRef = useRef(false)
+
+  const [activeUsersCount, setActiveUsersCount] = useState(0)
+  const [activeCategories, setActiveCategories] = useState({})
+
+  // Active Users Listener
+  useEffect(() => {
+    if (!user?.uid) return
+    const q = query(collection(db, 'users'), limit(500))
+    const unsub = onSnapshot(q, (snap) => {
+      let count = 0
+      const cats = {}
+      snap.docs.forEach(d => {
+        const data = d.data()
+        if (data.activeSession && data.activeSession.status === 'running') {
+          count++
+          const c = data.activeSession.category || 'General Work'
+          cats[c] = (cats[c] || 0) + 1
+        }
+      })
+      setActiveUsersCount(count)
+      setActiveCategories(cats)
+    })
+    return () => unsub()
+  }, [user?.uid])
 
   // Cooldown ticker
   useEffect(() => {
@@ -115,7 +140,7 @@ export default function Timer({ user }) {
 
   // Resume Session from Firestore (Refresh/Reconnect)
   useEffect(() => {
-    if (!user?.activeSession || isRunning) return
+    if (!user?.activeSession || isRunning || isTerminatingRef.current) return
     const { startedAt, mode: sessionMode, status } = user.activeSession
     if (status !== 'running') return
 
@@ -157,6 +182,7 @@ export default function Timer({ user }) {
   }, [isRunning, timeLeft])
 
   const handleTimerComplete = async (forcedTimeLeft = null, forcedMode = null, forcedStart = null) => {
+    isTerminatingRef.current = true
     setIsRunning(false)
     if (!isMuted) playBellSound('stop')
 
@@ -194,6 +220,10 @@ export default function Timer({ user }) {
 
     setTimeLeft(MODES[currentMode].duration)
     setCooldown(120)
+    
+    setTimeout(() => {
+      isTerminatingRef.current = false
+    }, 2000)
   }
 
   const startTimer = () => {
@@ -225,12 +255,16 @@ export default function Timer({ user }) {
   }
 
   const resetTimer = () => {
+    isTerminatingRef.current = true
     setIsRunning(false)
     setTimeLeft(MODES[mode].duration)
     try {
       const activeRef = doc(db, 'users', user.uid)
       updateDoc(activeRef, { activeSession: null }).catch(() => {})
     } catch (err) {}
+    setTimeout(() => {
+      isTerminatingRef.current = false
+    }, 2000)
   }
 
   const selectMode = (newMode) => {
@@ -270,9 +304,30 @@ export default function Timer({ user }) {
             <Clock className="w-5 h-5" />
             Time Tracker
           </div>
-          <button onClick={() => setIsMuted(!isMuted)} className={`p-2.5 rounded-xl transition-colors text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800/50 ${isMuted ? 'bg-orange-500/10 text-orange-500 border-orange-500/30' : 'bg-slate-100 dark:bg-[#1e2129] hover:bg-slate-200 dark:hover:bg-[#262a33]'}`}>
-            {isMuted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
-          </button>
+          <div className="flex items-center gap-3">
+            {activeUsersCount > 0 && (
+              <div className="group relative flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-full cursor-pointer animate-fade-in">
+                <Zap className="w-4 h-4 text-orange-500 animate-pulse" />
+                <span className="text-xs font-bold text-orange-600 dark:text-orange-400">{activeUsersCount} Active</span>
+                
+                {/* Tooltip */}
+                <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-200 dark:border-slate-700 pb-1">Focusing Now</p>
+                  <div className="space-y-1.5">
+                    {Object.entries(activeCategories).map(([cat, cnt]) => (
+                      <div key={cat} className="flex items-center justify-between text-xs font-bold">
+                        <span className="text-slate-600 dark:text-slate-300 truncate pr-2">{cat}</span>
+                        <span className="text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-md">{cnt}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            <button onClick={() => setIsMuted(!isMuted)} className={`p-2.5 rounded-xl transition-colors text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800/50 ${isMuted ? 'bg-orange-500/10 text-orange-500 border-orange-500/30' : 'bg-slate-100 dark:bg-[#1e2129] hover:bg-slate-200 dark:hover:bg-[#262a33]'}`}>
+              {isMuted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
 
         {/* Setup Controls (Hidden during session) */}

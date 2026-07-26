@@ -6,12 +6,15 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { updatePassword } from 'firebase/auth'
 import { isReservedUsername } from '../utils/reservedUsernames'
+import Cropper from 'react-easy-crop'
+import getCroppedImg from '../utils/cropImage'
+import { X } from 'lucide-react'
 
 export default function Profile({ user, onUpdateProfile, setupMode }) {
   const rawUsername = (user.username || '').replace(/^@/, '')
   const [profileData, setProfileData] = useState({
-    name: user.name,
-    username: rawUsername,
+    name: user.name || '',
+    username: rawUsername || '',
     photo: user.photo || '',
     mobile: user.mobile || ''
   })
@@ -26,35 +29,64 @@ export default function Profile({ user, onUpdateProfile, setupMode }) {
   const [passwordForDelete, setPasswordForDelete] = useState('')
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+  const [cropModalOpen, setCropModalOpen] = useState(false)
+  const [imageSrc, setImageSrc] = useState(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
+
+  
   const fileInputRef = useRef(null)
 
-  const handlePhotoUpload = async (e) => {
+  const onCropComplete = (croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels)
+  }
+
+  const handlePhotoSelect = (e) => {
     const file = e.target.files[0]
     if (!file) return
     
-    // 5MB Limit Check
     if (file.size > 5 * 1024 * 1024) {
        alert("Error: File is too large. Profile picture must be less than 5MB.")
        return
     }
 
-    setUploading(true)
-    setError('')
+    const reader = new FileReader()
+    reader.addEventListener('load', () => {
+      setImageSrc(reader.result)
+      setCropModalOpen(true)
+      setShowPhotoMenu(false)
+    })
+    reader.readAsDataURL(file)
+  }
+
+  const handleCropSave = async () => {
     try {
-      const ext = file.name.split('.').pop()
+      setUploading(true)
+      const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels)
+      const ext = 'jpg'
       const storageRef = ref(storage, `profile-photos/${user.uid}/${Date.now()}.${ext}`)
-      await uploadBytes(storageRef, file)
+      await uploadBytes(storageRef, croppedImageBlob)
       const downloadURL = await getDownloadURL(storageRef)
       setProfileData(prev => ({ ...prev, photo: downloadURL }))
-      // Auto-save the photo link to Firestore immediately for better UX
       await onUpdateProfile({ ...profileData, photo: downloadURL })
       setMessage('Photo updated successfully! ✅')
+      setCropModalOpen(false)
+      setImageSrc(null)
     } catch (err) {
       console.error('Photo upload failed', err)
-      setError('Photo upload failed. Please check your internet and try again.')
+      setError('Photo upload failed. Please try again.')
     } finally {
       setUploading(false)
     }
+  }
+
+  const handleDeletePhoto = async () => {
+    setProfileData(prev => ({ ...prev, photo: '' }))
+    await onUpdateProfile({ ...profileData, photo: '' })
+    setShowPhotoMenu(false)
   }
 
   const handleSaveProfile = async (e) => {
@@ -87,15 +119,15 @@ export default function Profile({ user, onUpdateProfile, setupMode }) {
         return
       }
     } catch (err) {
-      console.error(err)
+      console.warn("Could not verify username uniqueness:", err)
     }
 
     try {
       await onUpdateProfile({
-        name: profileData.name,
-        username: trimmedUsername,
-        photo: profileData.photo,
-        mobile: profileData.mobile
+        name: profileData.name || '',
+        username: trimmedUsername.toLowerCase(),
+        photo: profileData.photo || '',
+        mobile: profileData.mobile || ''
       })
       setMessage('Profile updated successfully! ✅')
       setTimeout(() => setMessage(''), 3000)
@@ -203,27 +235,41 @@ export default function Profile({ user, onUpdateProfile, setupMode }) {
           {/* Photo Upload */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8">
             <div className="flex flex-col items-center gap-4">
-              <div
-                className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-slate-200 dark:border-slate-700 overflow-hidden cursor-pointer group shadow-xl"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {uploading ? (
-                  <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              <div className="relative">
+                <div
+                  className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-slate-200 dark:border-slate-700 overflow-hidden cursor-pointer group shadow-xl"
+                  onClick={() => setShowPhotoMenu(!showPhotoMenu)}
+                >
+                  {uploading ? (
+                    <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                      <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  ) : profileData.photo ? (
+                    <img src={profileData.photo} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-white text-4xl font-bold">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="w-8 h-8 text-white mb-1" />
+                    <span className="text-white text-xs font-semibold">Options</span>
                   </div>
-                ) : profileData.photo ? (
-                  <img src={profileData.photo} alt="Preview" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-white text-4xl font-bold">
-                    {user.name.charAt(0).toUpperCase()}
+                </div>
+
+                {showPhotoMenu && (
+                  <div className="absolute top-[105%] left-1/2 -translate-x-1/2 mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50 animate-slide-up-fade">
+                    {profileData.photo && (
+                      <button type="button" onClick={() => { setShowPreview(true); setShowPhotoMenu(false) }} className="w-full text-left px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-300">View Preview</button>
+                    )}
+                    <button type="button" onClick={() => { fileInputRef.current?.click(); setShowPhotoMenu(false) }} className="w-full text-left px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 text-sm font-semibold text-blue-600 dark:text-blue-400">Upload / Change</button>
+                    {profileData.photo && (
+                      <button type="button" onClick={handleDeletePhoto} className="w-full text-left px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 text-sm font-semibold text-red-500">Remove Photo</button>
+                    )}
                   </div>
                 )}
-                <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Camera className="w-8 h-8 text-white mb-1" />
-                  <span className="text-white text-xs font-semibold">Change</span>
-                </div>
               </div>
-              <input type="file" accept="image/png, image/jpeg, image/webp" ref={fileInputRef} onChange={handlePhotoUpload} className="hidden" />
+              <input type="file" accept="image/png, image/jpeg, image/webp" ref={fileInputRef} onChange={handlePhotoSelect} className="hidden" />
               <p className="text-sm text-slate-500 dark:text-slate-400 font-medium bg-slate-100 dark:bg-slate-800/50 px-4 py-1.5 rounded-full">JPG, PNG & WEBP only</p>
             </div>
 
@@ -375,6 +421,47 @@ export default function Profile({ user, onUpdateProfile, setupMode }) {
           </div>
         )}
       </div>
+
+      {/* Preview Modal */}
+      {showPreview && profileData.photo && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-4" onClick={() => setShowPreview(false)}>
+          <div className="relative max-w-2xl w-full" onClick={e => e.stopPropagation()}>
+            <img src={profileData.photo} className="w-full h-auto rounded-2xl shadow-2xl object-contain max-h-[80vh]" alt="Preview" />
+            <button onClick={() => setShowPreview(false)} className="absolute -top-12 right-0 text-white hover:text-slate-300 p-2"><X className="w-8 h-8" /></button>
+          </div>
+        </div>
+      )}
+
+      {/* Crop Modal */}
+      {cropModalOpen && imageSrc && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-3xl h-[60vh] bg-black">
+            <Cropper
+              image={imageSrc}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              cropShape="round"
+              showGrid={false}
+              onCropChange={setCrop}
+              onCropComplete={onCropComplete}
+              onZoomChange={setZoom}
+            />
+          </div>
+          <div className="w-full max-w-3xl p-6 bg-white dark:bg-slate-900 rounded-b-2xl flex flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <span className="text-slate-500 text-sm font-bold">Zoom</span>
+              <input type="range" min={1} max={3} step={0.1} value={zoom} onChange={e => setZoom(e.target.value)} className="flex-1 accent-blue-500" />
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <button onClick={() => setCropModalOpen(false)} className="px-6 py-2.5 rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">Cancel</button>
+              <button onClick={handleCropSave} disabled={uploading} className="px-6 py-2.5 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 flex items-center gap-2">
+                {uploading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : 'Save Photo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

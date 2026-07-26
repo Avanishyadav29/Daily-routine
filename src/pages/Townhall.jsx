@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { MessageSquare, Send, Trash2, Ban, ShieldAlert, X, AlertTriangle, ShieldCheck, Paperclip, Image as ImageIcon } from 'lucide-react'
 import { db, storage } from '../firebase'
-import { collection, addDoc, onSnapshot, query, orderBy, limit, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore'
+import { collection, addDoc, onSnapshot, query, orderBy, limit, deleteDoc, doc, updateDoc, getDoc, getDocs } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
 import { isAdminUser } from '../utils/reservedUsernames'
@@ -16,11 +16,27 @@ export default function Townhall({ user, clearBadge }) {
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef(null)
   const bottomRef = useRef(null)
-  
   const isAdmin = isAdminUser(user)
   const isMod = user?.role === 'moderator'
   const isCoord = user?.role === 'coordinator'
   const canDelete = isAdmin || isMod || isCoord
+
+  const [usersList, setUsersList] = useState([])
+  const [showMentions, setShowMentions] = useState(false)
+  const [mentionQuery, setMentionQuery] = useState('')
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const snap = await getDocs(query(collection(db, 'users'), limit(500)))
+        setUsersList(snap.docs.map(d => ({ username: d.data().username, name: d.data().name })).filter(u => u.username))
+      } catch (err) {
+        console.warn('Failed to load users for tagging', err)
+      }
+    }
+    fetchUsers()
+  }, [])
 
   useEffect(() => {
     // Clear Townhall notification badge
@@ -108,6 +124,41 @@ export default function Townhall({ user, clearBadge }) {
     })
     setText('')
     setAttachment(null)
+    setShowMentions(false)
+  }
+
+  const handleTextChange = (e) => {
+    const val = e.target.value
+    setText(val)
+    const cursorPosition = e.target.selectionStart
+    const textBeforeCursor = val.substring(0, cursorPosition)
+    const words = textBeforeCursor.split(/\s/)
+    const lastWord = words[words.length - 1]
+    
+    if (lastWord.startsWith('@')) {
+      setMentionQuery(lastWord.substring(1).toLowerCase())
+      setShowMentions(true)
+    } else {
+      setShowMentions(false)
+    }
+  }
+
+  const handleMentionSelect = (username) => {
+    const cursorPosition = inputRef.current.selectionStart
+    const textBeforeCursor = text.substring(0, cursorPosition)
+    const textAfterCursor = text.substring(cursorPosition)
+    const words = textBeforeCursor.split(/\s/)
+    words.pop()
+    
+    const newTextBefore = (words.length > 0 ? words.join(' ') + ' ' : '') + `@${username} `
+    setText(newTextBefore + textAfterCursor)
+    setShowMentions(false)
+    setTimeout(() => {
+       if (inputRef.current) {
+          inputRef.current.focus()
+          inputRef.current.setSelectionRange(newTextBefore.length, newTextBefore.length)
+       }
+    }, 0)
   }
 
   const handleFile = (e) => {
@@ -241,13 +292,26 @@ export default function Townhall({ user, clearBadge }) {
                     <button onClick={() => fileRef.current?.click()} className="p-3 text-slate-400 hover:text-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 rounded-2xl transition-all"><Paperclip className="w-5 h-5" /></button>
                   </>
                 )}
-                <input 
-                  className="flex-1 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-slate-900 dark:text-white"
-                  placeholder={isAdmin ? "Share official update (links allowed)..." : "Message Global Community..."}
-                  value={text}
-                  onChange={e => setText(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSend()}
-                />
+                <div className="flex-1 relative">
+                  {showMentions && (
+                    <div className="absolute bottom-full left-0 w-64 mb-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl max-h-48 overflow-y-auto z-50 animate-slide-up-fade">
+                      {usersList.filter(u => u.username.toLowerCase().includes(mentionQuery) || u.name.toLowerCase().includes(mentionQuery)).slice(0, 10).map(u => (
+                        <div key={u.username} onClick={() => handleMentionSelect(u.username)} className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex flex-col transition-colors">
+                          <span className="font-bold text-sm text-slate-900 dark:text-white">{u.name}</span>
+                          <span className="text-xs text-blue-500">@{u.username}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <input 
+                    ref={inputRef}
+                    className="w-full h-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-slate-900 dark:text-white"
+                    placeholder={isAdmin ? "Share official update (links allowed)..." : "Message Global Community..."}
+                    value={text}
+                    onChange={handleTextChange}
+                    onKeyDown={e => e.key === 'Enter' && handleSend()}
+                  />
+                </div>
                 <button 
                   onClick={handleSend}
                   disabled={uploading}
