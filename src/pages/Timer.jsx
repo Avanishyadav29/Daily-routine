@@ -56,6 +56,19 @@ const playBellSound = (type = 'start') => {
   }
 };
 
+// Build heatmap data from sessions array
+const buildHeatmap = (sessions) => {
+  const map = {}
+  sessions.forEach(s => {
+    if (!s.startedAt || !s.completed) return
+    const day = new Date(s.startedAt).toDateString()
+    if (!map[day]) map[day] = { totalSecs: 0, sessions: [] }
+    map[day].totalSecs += s.duration || 0
+    map[day].sessions.push({ task: s.taskTitle || 'General Work', duration: s.duration || 0, category: s.category || 'General' })
+  })
+  return map
+}
+
 export default function Timer({ user }) {
   const [routines, setRoutines] = useState([])
   const [selectedTask, setSelectedTask] = useState(null)
@@ -68,6 +81,9 @@ export default function Timer({ user }) {
   const [completedSessions, setCompletedSessions] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
   const [cooldown, setCooldown] = useState(0)
+  const [heatmapData, setHeatmapData] = useState({})
+  const [allSessions, setAllSessions] = useState([])
+  const [tooltip, setTooltip] = useState(null)
   const intervalRef = useRef(null)
   const startTimeRef = useRef(null)
   const isTerminatingRef = useRef(false)
@@ -118,15 +134,16 @@ export default function Timer({ user }) {
     return () => unsub()
   }, [user?.uid])
 
-  // Load today's sessions
+  // Load all sessions (today + heatmap)
   useEffect(() => {
     if (!user?.uid) return
     const q = query(collection(db, 'users', user.uid, 'sessions'), orderBy('startedAt', 'desc'))
     const unsub = onSnapshot(q, (snap) => {
+      const all = snap.docs.map(d => d.data())
+      setAllSessions(all)
+      setHeatmapData(buildHeatmap(all))
       const today = new Date().toDateString()
-      const todaySessions = snap.docs
-        .map(d => d.data())
-        .filter(s => new Date(s.startedAt).toDateString() === today && s.completed)
+      const todaySessions = all.filter(s => new Date(s.startedAt).toDateString() === today && s.completed)
       const totalSecs = todaySessions.reduce((acc, s) => acc + (s.duration || 0), 0)
       setTotalToday(totalSecs)
       setCompletedSessions(todaySessions.length)
@@ -310,26 +327,97 @@ export default function Timer({ user }) {
     return `${m}m`
   }
 
+  // Build 365-day grid for heatmap
+  const buildHeatmapGrid = () => {
+    const cells = []
+    const today = new Date()
+    today.setHours(23,59,59,999)
+    for (let i = 364; i >= 0; i--) {
+      const d = new Date(today)
+      d.setDate(d.getDate() - i)
+      const key = d.toDateString()
+      const data = heatmapData[key]
+      const secs = data?.totalSecs || 0
+      let level = 0
+      if (secs > 0) level = 1
+      if (secs >= 25 * 60) level = 2
+      if (secs >= 60 * 60) level = 3
+      if (secs >= 2 * 60 * 60) level = 4
+      cells.push({ date: d, key, secs, level, data })
+    }
+    return cells
+  }
+
+  // Group cells by week columns
+  const buildWeekColumns = () => {
+    const cells = buildHeatmapGrid()
+    const weeks = []
+    let week = []
+    // Pad start so first week starts on Sunday
+    const firstDay = cells[0].date.getDay()
+    for (let p = 0; p < firstDay; p++) week.push(null)
+    cells.forEach(cell => {
+      week.push(cell)
+      if (week.length === 7) { weeks.push(week); week = [] }
+    })
+    if (week.length > 0) weeks.push(week)
+    return weeks
+  }
+
+  const levelColors = [
+    'bg-slate-800/60 dark:bg-slate-800/60',          // 0 - empty
+    'bg-blue-900/70 dark:bg-blue-900/70',            // 1 - light
+    'bg-blue-600/80 dark:bg-blue-600/80',            // 2 - medium
+    'bg-blue-500 dark:bg-blue-500',                  // 3 - good
+    'bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.6)]', // 4 - great
+  ]
+
+  const weekCols = buildWeekColumns()
+
+  // Month labels
+  const getMonthLabels = () => {
+    const labels = []
+    const cells = buildHeatmapGrid()
+    let lastMonth = -1
+    weekCols.forEach((week, wi) => {
+      const firstReal = week.find(c => c)
+      if (!firstReal) return
+      const m = firstReal.date.getMonth()
+      if (m !== lastMonth) {
+        labels.push({ col: wi, label: firstReal.date.toLocaleString('default', { month: 'short' }) })
+        lastMonth = m
+      }
+    })
+    return labels
+  }
+
   return (
     <div className="max-w-4xl mx-auto animate-fade-in pb-10 px-4 text-slate-700 dark:text-slate-300">
       
       {/* Warning Banner */}
-      <div className="flex items-start gap-3 p-4 mb-6 bg-yellow-50 dark:bg-[#1a1400] border border-yellow-200 dark:border-yellow-900/50 rounded-xl shadow-lg">
-        <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-yellow-500" />
+      <div className="flex items-start gap-3 p-4 mb-6 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
+        <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-400" />
         <div>
-          <p className="text-sm font-semibold text-yellow-500">You've logged {completedSessions} sessions today.</p>
-          <p className="text-xs text-yellow-600/80 mt-1">Running timers alone doesn't build skills — completing tasks does. Your task progress is tracked and reviewed.</p>
+          <p className="text-sm font-semibold text-amber-400">{completedSessions} sessions logged today · {formatTime(totalToday)} focused</p>
+          <p className="text-xs text-slate-500 mt-0.5">Completing tasks builds skills. Your progress is tracked and reviewed.</p>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-2xl p-5 sm:p-7 shadow-2xl">
+      <div className="relative bg-white dark:bg-[#0f1117] border border-slate-200 dark:border-white/[0.06] rounded-3xl p-5 sm:p-8 shadow-2xl overflow-hidden">
+        {/* Glow effect */}
+        <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-72 h-40 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-2 text-orange-400 font-bold text-lg tracking-wide">
-            <Clock className="w-5 h-5" />
-            Time Tracker
-          </div>
           <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/30">
+              <Clock className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <div className="text-xl font-black text-slate-900 dark:text-white tracking-tight leading-none">Time Arena</div>
+              <div className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-0.5">Focus Mode</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
             {activeUsersCount > 0 && (
               <div className="group relative flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-full cursor-pointer animate-fade-in">
                 <Zap className="w-4 h-4 text-orange-500 animate-pulse" />
@@ -527,6 +615,101 @@ export default function Timer({ user }) {
         )}
 
       </div>
+
+      {/* ── GITHUB-STYLE HEATMAP ── */}
+      <div className="mt-6 bg-white dark:bg-[#0f1117] border border-slate-200 dark:border-white/[0.06] rounded-3xl p-5 sm:p-7 shadow-xl">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="font-black text-slate-900 dark:text-white text-base tracking-tight">Focus History</h3>
+            <p className="text-xs text-slate-400 mt-0.5">{allSessions.filter(s => s.completed).length} total sessions · Last 365 days</p>
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-semibold">
+            <span>Less</span>
+            {[0,1,2,3,4].map(l => (
+              <div key={l} className={`w-3 h-3 rounded-sm ${levelColors[l]}`} />
+            ))}
+            <span>More</span>
+          </div>
+        </div>
+
+        <div className="relative overflow-x-auto pb-2">
+          {/* Month labels */}
+          <div className="flex mb-1" style={{ paddingLeft: '28px' }}>
+            {getMonthLabels().map((ml, i) => (
+              <div
+                key={i}
+                className="text-[9px] text-slate-400 font-bold absolute uppercase tracking-wider"
+                style={{ left: `${28 + ml.col * 14}px`, position: 'absolute', top: 0 }}
+              >{ml.label}</div>
+            ))}
+            <div className="h-4" />
+          </div>
+
+          <div className="flex gap-[3px] mt-5" style={{ position: 'relative' }}>
+            {/* Day labels */}
+            <div className="flex flex-col gap-[3px] mr-1 shrink-0">
+              {['', 'Mon', '', 'Wed', '', 'Fri', ''].map((d, i) => (
+                <div key={i} className="h-[11px] text-[9px] text-slate-500 font-semibold leading-none w-6 text-right pr-1">{d}</div>
+              ))}
+            </div>
+
+            {/* Week columns */}
+            {weekCols.map((week, wi) => (
+              <div key={wi} className="flex flex-col gap-[3px]">
+                {week.map((cell, di) => (
+                  cell ? (
+                    <div
+                      key={di}
+                      className={`w-[11px] h-[11px] rounded-sm cursor-pointer transition-all duration-150 hover:ring-2 hover:ring-blue-400 hover:ring-offset-1 hover:ring-offset-[#0f1117] ${levelColors[cell.level]}`}
+                      onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        setTooltip({
+                          x: rect.left + window.scrollX,
+                          y: rect.top + window.scrollY,
+                          cell
+                        })
+                      }}
+                      onMouseLeave={() => setTooltip(null)}
+                    />
+                  ) : (
+                    <div key={di} className="w-[11px] h-[11px]" />
+                  )
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Floating Tooltip */}
+      {tooltip && (
+        <div
+          className="fixed z-[999] pointer-events-none bg-slate-900 border border-slate-700 rounded-xl shadow-2xl px-4 py-3 text-sm min-w-[200px] max-w-[260px]"
+          style={{ left: tooltip.x - 100, top: tooltip.y - 130 }}
+        >
+          <div className="font-bold text-white mb-1">
+            {tooltip.cell.date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+          </div>
+          {tooltip.cell.secs > 0 ? (
+            <>
+              <div className="text-blue-400 font-black text-base mb-2">{formatTime(tooltip.cell.secs)} focused</div>
+              <div className="space-y-1 border-t border-slate-700 pt-2">
+                {tooltip.cell.data?.sessions.slice(0, 4).map((s, i) => (
+                  <div key={i} className="flex items-center justify-between gap-3">
+                    <span className="text-slate-300 text-xs truncate">{s.task}</span>
+                    <span className="text-slate-400 text-xs shrink-0">{formatTime(s.duration)}</span>
+                  </div>
+                ))}
+                {(tooltip.cell.data?.sessions.length || 0) > 4 && (
+                  <div className="text-slate-500 text-[10px] pt-1">+{tooltip.cell.data.sessions.length - 4} more sessions</div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="text-slate-500 text-xs">No sessions on this day</div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
