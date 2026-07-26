@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { MessageSquare, Send, CheckCheck, Paperclip, X, Lock } from 'lucide-react'
+import { MessageSquare, Send, CheckCheck, Paperclip, X, Lock, ChevronLeft } from 'lucide-react'
 import { db, storage } from '../firebase'
 import {
   collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, getDoc, deleteDoc
@@ -16,6 +16,7 @@ export default function Inbox({ user, clearBadge }) {
   const [uploading, setUploading] = useState(false)
   const [attachment, setAttachment] = useState(null) // { file, preview, type }
   const [canChat, setCanChat] = useState(false)
+  const [showChatOnMobile, setShowChatOnMobile] = useState(false)
   const isAdmin = isAdminUser(user)
 
   const [allUsers, setAllUsers] = useState([])
@@ -152,16 +153,16 @@ export default function Inbox({ user, clearBadge }) {
         </div>
       </div>
 
-      <div className={`bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-2xl overflow-hidden shadow-xl ${isAdmin ? 'flex' : ''}`} style={{ height: '640px' }}>
+      <div className={`bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-2xl overflow-hidden shadow-xl ${isAdmin ? 'flex' : ''}`} style={{ height: 'calc(100vh - 180px)', minHeight: '500px', maxHeight: '760px' }}>
 
         {/* Admin: Sidebar */}
         {isAdmin && (
-          <div className="w-72 border-r border-slate-200 dark:border-slate-700/50 flex flex-col overflow-y-auto shrink-0">
+          <div className={`w-full md:w-72 border-r border-slate-200 dark:border-slate-700/50 flex-col overflow-y-auto shrink-0 ${showChatOnMobile ? 'hidden md:flex' : 'flex'}`}>
             <div className="p-4 font-semibold text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700/50 text-sm">
               Users ({allUsers.length})
             </div>
             {allUsers.map(u => (
-              <button key={u.uid} onClick={() => { setSelectedUser(u); setLoading(true) }}
+              <button key={u.uid} onClick={() => { setSelectedUser(u); setLoading(true); setShowChatOnMobile(true); }}
                 className={`p-3 flex items-center gap-3 text-left transition-colors border-b border-slate-100 dark:border-slate-800/40 ${selectedUser?.uid === u.uid ? 'bg-indigo-50 dark:bg-indigo-500/10 border-l-4 border-l-indigo-500' : 'hover:bg-slate-50 dark:hover:bg-white/[0.02]'}`}>
                 {u.photo ? <img src={u.photo} className="w-9 h-9 rounded-full object-cover shrink-0" alt="" /> : (
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
@@ -185,11 +186,14 @@ export default function Inbox({ user, clearBadge }) {
         )}
 
         {/* Chat Area */}
-        <div className="flex flex-col flex-1 min-w-0">
+        <div className={`flex-col flex-1 min-w-0 ${isAdmin && !showChatOnMobile ? 'hidden md:flex' : 'flex'}`}>
           {/* Chat Header */}
           <div className="p-4 border-b border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/40 flex items-center gap-3">
             {isAdmin && selectedUser ? (
               <>
+                <button onClick={() => setShowChatOnMobile(false)} className="md:hidden p-1.5 -ml-2 text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
                 {selectedUser.photo ? <img src={selectedUser.photo} className="w-8 h-8 rounded-full object-cover" alt="" /> : (
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">{selectedUser.name?.charAt(0)}</div>
                 )}

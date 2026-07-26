@@ -330,7 +330,7 @@ function App() {
       <div className="min-h-screen bg-white dark:bg-[#0d0f14] text-slate-900 dark:text-slate-100 transition-colors duration-300 flex flex-col md:flex-row">
       <Navbar user={user} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} unreadCounts={unreadCounts} />
       
-      <main className="flex-1 w-full md:pl-64 pb-20 md:pb-0 min-h-screen flex flex-col">
+      <main className="flex-1 w-full md:pl-64 pb-24 md:pb-0 min-h-screen flex flex-col">
         {/* Username missing banner */}
         {user && !user.username && (
           <div className="bg-gradient-to-r from-orange-500/90 to-amber-500/90 text-white text-sm font-medium py-2.5 px-4 flex items-center justify-center gap-3 shadow-lg z-30">

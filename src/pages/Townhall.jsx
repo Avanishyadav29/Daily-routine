@@ -194,8 +194,8 @@ export default function Townhall({ user, clearBadge }) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto pb-10 animate-fade-in flex flex-col" style={{ height: 'calc(100vh - 160px)' }}>
-      <div className="flex items-center justify-between mb-6 bg-white dark:bg-[#15171e] p-4 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800/60">
+    <div className="max-w-4xl mx-auto md:pb-10 animate-fade-in flex flex-col h-[calc(100dvh-220px)] md:h-[calc(100vh-160px)]">
+      <div className="flex items-center justify-between mb-4 md:mb-6 bg-white dark:bg-[#15171e] p-4 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800/60 shrink-0">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-gradient-to-tr from-cyan-500 to-blue-600 text-white rounded-2xl shadow-lg shadow-cyan-500/20">
             <MessageSquare className="w-7 h-7" />
