@@ -143,6 +143,12 @@ export default function Timer({ user }) {
 
   // Resume Session from Firestore (Refresh/Reconnect)
   useEffect(() => {
+    if (localStorage.getItem('timer_force_stopped') === 'true') {
+       if (user?.uid) updateDoc(doc(db, 'users', user.uid), { activeSession: null }).catch(() => {})
+       localStorage.removeItem('timer_force_stopped')
+       return
+    }
+
     if (!user?.activeSession || isRunning || isTerminatingRef.current) return
     const { startedAt, mode: sessionMode, status } = user.activeSession
     if (status !== 'running') return
@@ -280,12 +286,14 @@ export default function Timer({ user }) {
     isTerminatingRef.current = true
     setIsRunning(false)
     setTimeLeft(MODES[mode].duration)
+    localStorage.setItem('timer_force_stopped', 'true')
     try {
       const activeRef = doc(db, 'users', user.uid)
       updateDoc(activeRef, { activeSession: null }).catch(() => {})
     } catch (err) {}
     setTimeout(() => {
       isTerminatingRef.current = false
+      localStorage.removeItem('timer_force_stopped')
     }, 2000)
   }
 
