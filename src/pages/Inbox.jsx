@@ -27,7 +27,7 @@ export default function Inbox({ user, clearBadge }) {
   useEffect(() => {
     if (!isAdmin) return
     const unsub = onSnapshot(collection(db, 'users'), (snap) => {
-      const users = snap.docs.map(d => ({ uid: d.id, ...d.data() })).filter(u => u.email !== 'admin@daily.com')
+      const users = snap.docs.map(d => ({ uid: d.id, ...d.data() })).filter(u => u.uid !== user.uid && !isAdminUser(u))
       setAllUsers(users)
       if (!selectedUser && users.length > 0) setSelectedUser(users[0])
     })
