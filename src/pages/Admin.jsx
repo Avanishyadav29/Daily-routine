@@ -106,7 +106,6 @@ export default function Admin({ user }) {
   const [showPassword, setShowPassword] = useState(false)
   const [adminSessions, setAdminSessions] = useState([])
   const [terminating, setTerminating] = useState(false)
-  const [terminating, setTerminating] = useState(false)
   const [replyText, setReplyText] = useState({})
 
   const handleToggleFeedbackStatus = async (id, currentStatus) => {
