@@ -85,9 +85,12 @@ export default function Timer({ user }) {
       snap.docs.forEach(d => {
         const data = d.data()
         if (data.activeSession && data.activeSession.status === 'running') {
-          count++
-          const c = data.activeSession.category || 'General Work'
-          cats[c] = (cats[c] || 0) + 1
+          const startedAt = new Date(data.activeSession.startedAt || Date.now()).getTime()
+          if (Date.now() - startedAt < 46 * 60 * 1000) { // 46 minutes max
+            count++
+            const c = data.activeSession.category || 'General Work'
+            cats[c] = (cats[c] || 0) + 1
+          }
         }
       })
       setActiveUsersCount(count)
@@ -162,6 +165,25 @@ export default function Timer({ user }) {
       updateDoc(doc(db, 'users', user.uid), { activeSession: null }).catch(() => {})
     }
   }, [user?.activeSession, isRunning])
+
+  // Cleanup on window close
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (isRunningRef.current) {
+        updateDoc(doc(db, 'users', user.uid), { activeSession: null }).catch(() => {})
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      if (isRunningRef.current) {
+        updateDoc(doc(db, 'users', user.uid), { activeSession: null }).catch(() => {})
+      }
+    }
+  }, [user?.uid])
+
+  const isRunningRef = useRef(isRunning)
+  useEffect(() => { isRunningRef.current = isRunning }, [isRunning])
 
   // Timer ticker
   useEffect(() => {

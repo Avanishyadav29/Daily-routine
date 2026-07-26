@@ -147,7 +147,7 @@ export default function Leaderboard({ user }) {
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     {u.name} {u.uid === user.uid && <span className="text-xs bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full">You</span>}
-                    {u.activeSession && <span className="flex items-center gap-1 text-xs bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full border border-green-200 dark:border-green-500/20 animate-pulse"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Live</span>}
+                    {u.activeSession && (Date.now() - new Date(u.activeSession.startedAt || Date.now()).getTime() < 46 * 60 * 1000) && <span className="flex items-center gap-1 text-xs bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full border border-green-200 dark:border-green-500/20 animate-pulse"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Live</span>}
                   </div>
                   <div className="text-sm text-slate-500 dark:text-slate-400">
                     {u.username ? <span className="text-blue-500 font-medium mr-2">@{u.username}</span> : null}

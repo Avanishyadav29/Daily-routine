@@ -153,7 +153,7 @@ export default function Inbox({ user, clearBadge }) {
         </div>
       </div>
 
-      <div className={`bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-2xl overflow-hidden shadow-xl ${isAdmin ? 'flex' : ''}`} style={{ height: 'calc(100vh - 180px)', minHeight: '500px', maxHeight: '760px' }}>
+      <div className={`bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-2xl overflow-hidden shadow-xl ${isAdmin ? 'flex' : ''} h-[calc(100dvh-260px)] md:h-[calc(100vh-180px)]`} style={{ minHeight: '400px', maxHeight: '760px' }}>
 
         {/* Admin: Sidebar */}
         {isAdmin && (
@@ -199,7 +199,7 @@ export default function Inbox({ user, clearBadge }) {
                 )}
                 <div className="flex-1">
                   <div className="font-semibold text-slate-900 dark:text-white text-sm">{selectedUser.name} {selectedUser.username && <span className="text-blue-400 text-xs ml-1">@{selectedUser.username}</span>}</div>
-                  {selectedUser.activeSession && (
+                  {selectedUser.activeSession && (Date.now() - new Date(selectedUser.activeSession.startedAt || Date.now()).getTime() < 46 * 60 * 1000) && (
                     <div className="text-xs text-green-500 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>LIVE: {selectedUser.activeSession.taskTitle}</div>
                   )}
                 </div>
