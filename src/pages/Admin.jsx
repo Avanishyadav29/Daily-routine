@@ -106,6 +106,38 @@ export default function Admin({ user }) {
   const [showPassword, setShowPassword] = useState(false)
   const [adminSessions, setAdminSessions] = useState([])
   const [terminating, setTerminating] = useState(false)
+  const [terminating, setTerminating] = useState(false)
+  const [replyText, setReplyText] = useState({})
+
+  const handleToggleFeedbackStatus = async (id, currentStatus) => {
+    try { await updateDoc(doc(db, 'feedback', id), { solved: !currentStatus }) } catch (err) {}
+  }
+
+  const handleDeleteFeedback = async (id) => {
+    if (!window.confirm("Delete this feedback?")) return
+    try { await deleteDoc(doc(db, 'feedback', id)) } catch (err) {}
+  }
+
+  const handleReplyFeedback = async (uid, fbId, fbMessage) => {
+    const text = replyText[fbId]?.trim()
+    if (!text) return alert("Reply cannot be empty!")
+    
+    try {
+      const msgData = {
+        text: `Admin replied to your feedback ("${fbMessage.substring(0, 30)}..."): \n\n${text}`,
+        from: 'admin',
+        fromName: 'Admin',
+        createdAt: new Date().toISOString(),
+        read: false,
+      }
+      await addDoc(collection(db, 'users', uid, 'inbox'), msgData)
+      await updateDoc(doc(db, 'feedback', fbId), { solved: true }) // Mark solved automatically
+      alert("Reply sent to user's inbox successfully!")
+      setReplyText(prev => ({ ...prev, [fbId]: '' }))
+    } catch (err) {
+      console.warn("Failed to send reply:", err)
+    }
+  }
 
   useEffect(() => {
     if (!isAdminUser(user)) return
@@ -375,17 +407,43 @@ export default function Admin({ user }) {
         ) : activeTab === 'feedback' ? (
           <div className="space-y-5">
             {feedbacks.map(fb => (
-              <div key={fb.id} className="bg-white dark:bg-[#15171e] border border-slate-200 dark:border-slate-800/60 rounded-2xl p-5 shadow-sm">
+              <div key={fb.id} className={`bg-white dark:bg-[#15171e] border ${fb.solved ? 'border-green-500/50 bg-green-50/10 dark:bg-green-900/5' : 'border-slate-200 dark:border-slate-800/60'} rounded-2xl p-5 shadow-sm transition-all`}>
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                     <div className="font-bold text-slate-900 dark:text-white">{fb.userName} <span className="text-blue-400 text-xs">@{fb.username}</span></div>
+                     <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                       {fb.userName} <span className="text-blue-400 text-xs">@{fb.username}</span>
+                       {fb.solved && <span className="text-[10px] font-black uppercase bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full">Solved</span>}
+                     </div>
                      <div className="text-xs text-slate-400">{new Date(fb.submittedAt).toLocaleDateString()}</div>
                   </div>
                   <div className="flex items-center gap-1">
                      {[...Array(5)].map((_, i) => <Star key={i} className={`w-4 h-4 ${i < fb.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'}`} />)}
                   </div>
                 </div>
-                <p className="text-sm text-slate-700 dark:text-slate-300">{fb.message}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300 mb-4">{fb.message}</p>
+                
+                {/* Actions */}
+                <div className="flex flex-col gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/50">
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="Type a reply..." 
+                      className="flex-1 text-sm px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                      value={replyText[fb.id] || ''}
+                      onChange={(e) => setReplyText(prev => ({ ...prev, [fb.id]: e.target.value }))}
+                      onKeyDown={(e) => e.key === 'Enter' && handleReplyFeedback(fb.userId, fb.id, fb.message)}
+                    />
+                    <button onClick={() => handleReplyFeedback(fb.userId, fb.id, fb.message)} className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors">Reply</button>
+                  </div>
+                  <div className="flex justify-end items-center gap-2">
+                    <button onClick={() => handleToggleFeedbackStatus(fb.id, fb.solved)} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${fb.solved ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200' : 'bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/20'}`}>
+                      {fb.solved ? 'Mark Unsolved' : 'Mark Solved'}
+                    </button>
+                    <button onClick={() => handleDeleteFeedback(fb.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-all">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
             {feedbacks.length === 0 && <div className="text-center py-20 text-slate-400 italic">No feedback received yet.</div>}
