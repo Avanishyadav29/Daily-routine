@@ -1,9 +1,27 @@
 import { useState, useEffect, lazy, Suspense, useRef } from 'react'
+import React from 'react'
 import { Routes, Route, Navigate, useNavigate, Link, useLocation } from 'react-router-dom'
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, sendEmailVerification, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { doc, setDoc, getDoc, updateDoc, onSnapshot, collection, query, limit } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import Navbar from './components/Navbar'
+
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error("ErrorBoundary caught an error:", error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 20, color: 'white', background: 'red', fontFamily: 'monospace' }}>
+          <h2>Something went wrong.</h2>
+          <details style={{ whiteSpace: 'pre-wrap' }}>{this.state.error && this.state.error.toString()}</details>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const Login = lazy(() => import('./pages/Login'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -308,7 +326,8 @@ function App() {
   )
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0d0f14] text-slate-900 dark:text-slate-100 transition-colors duration-300 flex flex-col md:flex-row">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-white dark:bg-[#0d0f14] text-slate-900 dark:text-slate-100 transition-colors duration-300 flex flex-col md:flex-row">
       <Navbar user={user} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} unreadCounts={unreadCounts} />
       
       <main className="flex-1 w-full md:pl-64 pb-20 md:pb-0 min-h-screen flex flex-col">
@@ -368,7 +387,8 @@ function App() {
         </div>
         {user && isProfileIncomplete && location.pathname !== '/profile' && !isAdminEmail(user.email) && user.role !== 'admin' && <Navigate to="/profile" replace />}
       </main>
-    </div>
+      </div>
+    </ErrorBoundary>
   )
 }
 

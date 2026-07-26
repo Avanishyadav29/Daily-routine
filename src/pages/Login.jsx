@@ -257,7 +257,7 @@ export default function Login({ onLogin, onSignup, onGoogleLogin }) {
                   try {
                     await onGoogleLogin()
                   } catch (err) {
-                    setError('Google sign-in failed or was cancelled.')
+                    setError('Google sign-in failed: ' + err.message)
                   }
                 }}
                 disabled={loading}
