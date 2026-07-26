@@ -44,7 +44,7 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme, unread
             <div className="p-2 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl text-white shadow-lg">
               <Sun className="w-6 h-6" />
             </div>
-            <span>MyRoutine</span>
+            <span>Time Arena</span>
           </Link>
         </div>
 
@@ -112,7 +112,7 @@ export default function Navbar({ user, onLogout, isDarkMode, toggleTheme, unread
           <div className="p-1.5 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-lg text-white">
             <Sun className="w-4 h-4" />
           </div>
-          <span>MyRoutine</span>
+          <span>Time Arena</span>
         </Link>
         <div className="flex items-center gap-3">
           <button onClick={toggleTheme} className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors" title="Toggle Theme">
