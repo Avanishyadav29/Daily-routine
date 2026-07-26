@@ -214,7 +214,12 @@ export default function Profile({ user, onUpdateProfile, setupMode }) {
           <User className="w-8 h-8" />
         </div>
         <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Edit Profile</h1>
+          <div className="flex items-center gap-3">
+             <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Edit Profile</h1>
+             {user.role === 'admin' && <span className="bg-red-500/10 text-red-500 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-red-500/20">Admin</span>}
+             {user.role === 'moderator' && <span className="bg-purple-500/10 text-purple-500 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-purple-500/20">Moderator</span>}
+             {user.role === 'coordinator' && <span className="bg-cyan-500/10 text-cyan-500 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-cyan-500/20">Coordinator</span>}
+          </div>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Update your personal information</p>
         </div>
       </div>
