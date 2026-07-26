@@ -141,55 +141,58 @@ export default function Timer({ user }) {
     return () => { document.title = "Daily Routine" }
   }, [])
 
-  // Resume Session from Firestore (Refresh/Reconnect)
-  useEffect(() => {
-    if (localStorage.getItem('timer_force_stopped') === 'true') {
-       if (user?.uid) updateDoc(doc(db, 'users', user.uid), { activeSession: null }).catch(() => {})
-       localStorage.removeItem('timer_force_stopped')
-       return
-    }
+  const isRunningRef = useRef(false)
+  useEffect(() => { isRunningRef.current = isRunning }, [isRunning])
 
-    if (!user?.activeSession || isRunning || isTerminatingRef.current) return
-    const { startedAt, mode: sessionMode, status } = user.activeSession
-    if (status !== 'running') return
-
-    const start = new Date(startedAt).getTime()
-    const now = Date.now()
-    const elapsed = Math.floor((now - start) / 1000)
-    const duration = MODES[sessionMode].duration
-
-    if (elapsed < duration) {
-      setMode(sessionMode)
-      setTimeLeft(duration - elapsed)
-      setIsRunning(true)
-      startTimeRef.current = startedAt
-    } else if (elapsed < duration + 300) { 
-      // Finished recently (within 5 mins of target)
-      handleTimerComplete(0, sessionMode, startedAt)
-    } else {
-      // Stale session (long ago), just clear it
-      updateDoc(doc(db, 'users', user.uid), { activeSession: null }).catch(() => {})
-    }
-  }, [user?.activeSession, isRunning])
-
-  // Cleanup on window close
+  // Cleanup on window close / unmount
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (isRunningRef.current) {
+      if (isRunningRef.current && user?.uid) {
+        // synchronous: use sendBeacon or just fire-and-forget
+        navigator.sendBeacon && navigator.sendBeacon('/noop') // keep alive
         updateDoc(doc(db, 'users', user.uid), { activeSession: null }).catch(() => {})
       }
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
-      if (isRunningRef.current) {
+      // Also clear on component unmount (route change)
+      if (isRunningRef.current && user?.uid) {
         updateDoc(doc(db, 'users', user.uid), { activeSession: null }).catch(() => {})
       }
     }
   }, [user?.uid])
 
-  const isRunningRef = useRef(isRunning)
-  useEffect(() => { isRunningRef.current = isRunning }, [isRunning])
+  // Resume Session from Firestore on page refresh
+  useEffect(() => {
+    if (!user?.activeSession || isRunning || isTerminatingRef.current) return
+    const { startedAt, mode: sessionMode, status } = user.activeSession
+
+    // Only resume if explicitly 'running'
+    if (status !== 'running') return
+
+    const modeConfig = MODES[sessionMode]
+    if (!modeConfig) return
+
+    const start = new Date(startedAt).getTime()
+    const now = Date.now()
+    const elapsed = Math.floor((now - start) / 1000)
+    const duration = modeConfig.duration
+
+    if (elapsed >= duration + 300) {
+      // Very stale session — clear it silently
+      updateDoc(doc(db, 'users', user.uid), { activeSession: null }).catch(() => {})
+    } else if (elapsed >= duration) {
+      // Finished while away — log it
+      handleTimerComplete(0, sessionMode, startedAt)
+    } else {
+      // Resume normally
+      setMode(sessionMode)
+      setTimeLeft(duration - elapsed)
+      setIsRunning(true)
+      startTimeRef.current = startedAt
+    }
+  }, [user?.activeSession, isRunning])
 
   // Timer ticker
   useEffect(() => {
@@ -235,9 +238,7 @@ export default function Timer({ user }) {
         await addDoc(collection(db, 'users', user.uid, 'sessions'), sessionData)
         await addDoc(collection(db, 'globalSessions'), sessionData)
 
-        // Force update leaderboard stat on user document
-        const activeRef = doc(db, 'users', user.uid)
-        await updateDoc(activeRef, { 
+        await updateDoc(doc(db, 'users', user.uid), { 
           activeSession: null,
           todayFocusHours: (totalToday || 0) + elapsed
         }).catch(() => {})
@@ -260,8 +261,7 @@ export default function Timer({ user }) {
     setIsRunning(true)
     
     try {
-      const activeRef = doc(db, 'users', user.uid)
-      updateDoc(activeRef, {
+      updateDoc(doc(db, 'users', user.uid), {
         activeSession: {
           taskId: selectedTask?.id || 'none',
           taskTitle: selectedTask?.title || 'General Work',
@@ -277,8 +277,7 @@ export default function Timer({ user }) {
   const pauseTimer = () => {
     setIsRunning(false)
     try {
-      const activeRef = doc(db, 'users', user.uid)
-      updateDoc(activeRef, { 'activeSession.status': 'paused' }).catch(() => {})
+      updateDoc(doc(db, 'users', user.uid), { 'activeSession.status': 'paused' }).catch(() => {})
     } catch (err) {}
   }
 
@@ -286,14 +285,10 @@ export default function Timer({ user }) {
     isTerminatingRef.current = true
     setIsRunning(false)
     setTimeLeft(MODES[mode].duration)
-    localStorage.setItem('timer_force_stopped', 'true')
-    try {
-      const activeRef = doc(db, 'users', user.uid)
-      updateDoc(activeRef, { activeSession: null }).catch(() => {})
-    } catch (err) {}
+    // Clear from Firestore immediately — this is the source of truth
+    updateDoc(doc(db, 'users', user.uid), { activeSession: null }).catch(() => {})
     setTimeout(() => {
       isTerminatingRef.current = false
-      localStorage.removeItem('timer_force_stopped')
     }, 2000)
   }
 
