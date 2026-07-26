@@ -173,13 +173,13 @@ export default function Login({ onLogin, onSignup, onGoogleLogin }) {
               <>
                 <div>
                   <label className="block mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300">Full Name</label>
-                  <input className="input-field" type="text" name="name" placeholder="John Doe" value={formData.name} onChange={handleChange} />
+                  <input className="input-field" type="text" name="name" placeholder="John Doe" value={formData.name} onChange={handleChange} required />
                 </div>
                 <div>
                   <label className="block mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1"><AtSign className="w-3.5 h-3.5 text-blue-500" />Username <span className="text-red-500">*</span></label>
                   <div className="relative flex items-center">
                     <span className="absolute left-3.5 text-blue-500 font-bold">@</span>
-                    <input className="input-field pl-8" type="text" name="username" placeholder="yourname123" value={formData.username.replace(/^@/, '')} onChange={handleChange} />
+                    <input className="input-field pl-8" type="text" name="username" placeholder="yourname123" value={formData.username.replace(/^@/, '')} onChange={handleChange} required />
                   </div>
                 </div>
                 <div>
@@ -203,7 +203,7 @@ export default function Login({ onLogin, onSignup, onGoogleLogin }) {
             {mode === 'login' && (
               <div>
                 <label className="block mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300">Email or @Username</label>
-                <input className="input-field" type="text" name="loginInput" placeholder="you@example.com or @username" value={formData.loginInput} onChange={handleChange} autoComplete="username" />
+                <input className="input-field" type="text" name="loginInput" placeholder="you@example.com or @username" value={formData.loginInput} onChange={handleChange} autoComplete="username" required />
               </div>
             )}
 
@@ -211,7 +211,7 @@ export default function Login({ onLogin, onSignup, onGoogleLogin }) {
             {(mode === 'signup' || mode === 'forgot') && (
               <div>
                 <label className="block mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300">{mode === 'forgot' ? 'Your Email Address' : 'Email Address'}</label>
-                <input className="input-field" type="email" name="email" placeholder="you@example.com" value={formData.email} onChange={handleChange} />
+                <input className="input-field" type="email" name="email" placeholder="you@example.com" value={formData.email} onChange={handleChange} required />
               </div>
             )}
 
@@ -227,7 +227,7 @@ export default function Login({ onLogin, onSignup, onGoogleLogin }) {
                   )}
                 </div>
                 <div className="relative">
-                  <input className="input-field pr-12" type={showPass ? 'text' : 'password'} name="password" placeholder="••••••••" value={formData.password} onChange={handleChange} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} />
+                  <input className="input-field pr-12" type={showPass ? 'text' : 'password'} name="password" placeholder="••••••••" value={formData.password} onChange={handleChange} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required />
                   <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                     {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>

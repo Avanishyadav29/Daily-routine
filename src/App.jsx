@@ -132,10 +132,15 @@ function App() {
         })
 
         // Unread Inbox listener
-        const unsubInbox = onSnapshot(collection(db, 'users', firebaseUser.uid, 'inbox'), (snap) => {
-          const unread = snap.docs.filter(d => !d.data().read && d.data().from !== 'me' && d.data().from !== firebaseUser.uid).length
-          setUnreadCounts(prev => ({ ...prev, inbox: unread }))
-        })
+        let unsubInbox = () => {}
+        if (!isAdm) {
+          unsubInbox = onSnapshot(collection(db, 'users', firebaseUser.uid, 'inbox'), (snap) => {
+            const unread = snap.docs.filter(d => !d.data().read && d.data().from !== 'me' && d.data().from !== firebaseUser.uid).length
+            setUnreadCounts(prev => ({ ...prev, inbox: unread }))
+          })
+        } else {
+          setUnreadCounts(prev => ({ ...prev, inbox: 0 }))
+        }
 
         // Announcements listener for badge
         const qAnn = query(collection(db, 'announcements'), limit(20))

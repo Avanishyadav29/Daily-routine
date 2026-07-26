@@ -170,7 +170,7 @@ export default function Inbox({ user, clearBadge }) {
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-slate-900 dark:text-white text-sm truncate">{u.name}</div>
+                  <div className="font-semibold text-slate-900 dark:text-white text-sm truncate">{u.name || 'Anonymous User'}</div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{u.username ? `@${u.username}` : u.email}</div>
                 </div>
                 {/* Chat enable toggle */}
