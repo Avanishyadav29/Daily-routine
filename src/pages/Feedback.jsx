@@ -6,6 +6,8 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
 const CATEGORIES = ['General', 'Bug Report', 'Feature Request', 'Performance', 'Design', 'Other']
 
+
+
 export default function Feedback({ user }) {
   const [rating, setRating] = useState(0)
   const [hoverRating, setHoverRating] = useState(0)
